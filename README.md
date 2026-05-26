@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SecureAgentRAG — Web Frontend
 
-## Getting Started
+Next.js 16 (App Router) + TypeScript + Tailwind v4 + Vercel.
 
-First, run the development server:
+Public BYOK demo for [SecureAgentRAG](https://github.com/moazmo/secureagentrag).
+
+- **Live:** https://app.eilm.live (deploy in progress — phase 4.4)
+- **Backend:** https://LeomordKaly-secureagentrag-api.hf.space
+- **Source:** https://github.com/moazmo/secureagentrag-web
+
+## What this is
+
+A single-page chat UI that:
+
+- Stores the visitor's LLM API key in `localStorage` and forwards it as
+  an HTTP header to the backend on every chat request.
+- Lets visitors pick one of three preset RBAC personas (engineer /
+  compliance / executive) — same query, different visible chunks.
+- Generates a per-visitor session UUID that the backend uses as a
+  Qdrant collection name (`documents_sess_<id>`). The collection auto-
+  purges after 24 hours.
+- Falls back to the platform owner's Groq key when no BYOK is set —
+  throttled to 3 requests / hour / IP at the backend.
+- Renders the assistant's confidence score, faithfulness review flag,
+  citation count, and "byok" / "owner-key" provenance on every message.
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dev server proxies to the production HF Space backend. Override
+locally:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:7860 npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploying
 
-## Learn More
+This repo is wired to the Vercel project `secureagentrag-web` under the
+`moazmo` account. Deploys happen on every push to `main`. Manual deploy:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npx vercel --prod
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Custom domain `app.eilm.live` is set as a Vercel custom domain (free on
+Hobby tier) with a CNAME from Hostinger DNS Zone Editor →
+`cname.vercel-dns.com`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## File layout
 
-## Deploy on Vercel
+```
+src/
+  app/
+    layout.tsx          # html / body shell, dark mode, OpenGraph
+    page.tsx            # main chat page (BYOK drawer + persona + chat)
+    globals.css         # tailwind directives
+    api/chat/route.ts   # Edge function that forwards to /byok/chat
+  lib/
+    byok.ts             # localStorage helpers + session-id factory
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Security model
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This frontend NEVER:
+
+- Sends the BYOK key to any third party other than the configured backend.
+- Stores the key in cookies (CSRF risk).
+- Logs the key via `console.log` or any telemetry.
+
+The backend NEVER:
+
+- Persists the BYOK key to disk.
+- Echoes the key in audit logs (regex redaction tests at
+  `tests/test_security/test_byok_key_redaction.py` enforce this).
+- Sends the key to Phoenix / OpenTelemetry (`utils/observability.setup_tracing`
+  hard-disables Phoenix in BYOK mode).
+
+See the parent repo's `launch-plan/11-security-checklist.md` for the full
+threat model.
+
+## License
+
+MIT — same as the parent repo.
