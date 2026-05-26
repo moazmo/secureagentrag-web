@@ -5,12 +5,12 @@ export const metadata: Metadata = {
   title: "SecureAgentRAG — Privacy-first multi-agent RAG demo",
   description:
     "Public BYOK demo of SecureAgentRAG. Paste your own LLM key, pick a persona, watch the corrective RAG loop run end-to-end with NLI faithfulness gate, SHA-256 audit chain, and RBAC enforced at the vector DB layer.",
-  metadataBase: new URL("https://app.eilm.live"),
+  metadataBase: new URL("https://secureagentrag-web.vercel.app"),
   openGraph: {
     title: "SecureAgentRAG",
     description:
       "Privacy-first multi-agent RAG with RBAC, faithfulness gate, and tamper-evident audit chain.",
-    url: "https://app.eilm.live",
+    url: "https://secureagentrag-web.vercel.app",
     type: "website",
   },
   twitter: { card: "summary_large_image" },
