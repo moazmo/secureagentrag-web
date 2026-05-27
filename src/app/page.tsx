@@ -464,8 +464,8 @@ export default function ChatPage() {
   );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-4 py-6">
-      <header className="flex flex-col gap-3 border-b border-neutral-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-5 px-4 py-7 leading-relaxed">
+      <header className="flex flex-col gap-3 border-b border-[color:var(--border-soft)] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
             <span className="bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">
@@ -486,7 +486,7 @@ export default function ChatPage() {
             href="https://github.com/moazmo/secureagentrag"
             target="_blank"
             rel="noopener"
-            className="rounded border border-neutral-800 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-600 hover:text-neutral-100"
+            className="rounded border border-[color:var(--border-soft)] px-2 py-1 text-xs text-neutral-400 hover:border-neutral-600 hover:text-[color:var(--foreground)]"
           >
             github
           </a>
@@ -589,14 +589,14 @@ export default function ChatPage() {
         ))}
       </section>
 
-      <footer className="flex items-end gap-2 border-t border-neutral-800 pt-3">
+      <footer className="flex items-end gap-2 border-t border-[color:var(--border-soft)] pt-3">
         <textarea
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Ask a question…  (Ctrl+Enter to send)"
-          className="flex-1 rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:border-blue-500 focus:outline-none"
+          className="flex-1 rounded border border-neutral-700 bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--foreground)] focus:border-blue-500 focus:outline-none"
           rows={3}
           disabled={busy}
         />
@@ -622,8 +622,8 @@ function EmptyState({
   const prompts = DEMO_PROMPTS[persona] || [];
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
-        <p className="font-medium text-neutral-100">
+      <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 text-sm text-neutral-300">
+        <p className="font-medium text-[color:var(--foreground)]">
           Privacy-first multi-agent RAG demo.
         </p>
         <p className="mt-2 text-xs text-neutral-400">
@@ -644,7 +644,7 @@ function EmptyState({
           <li key={p.text}>
             <button
               onClick={() => onPick(p.text)}
-              className="w-full rounded-md border border-neutral-800 bg-neutral-900 p-3 text-left text-sm text-neutral-200 hover:border-blue-500/40 hover:bg-neutral-800/60"
+              className="w-full rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 text-left text-sm text-neutral-200 hover:border-blue-500/40 hover:bg-neutral-800/60"
             >
               <span className="block">{p.text}</span>
               {p.hint && (
@@ -677,7 +677,7 @@ function MessageBubble({
             ? "border-blue-600 bg-blue-600 text-white"
             : meta?.blocked
               ? "border-red-700/40 bg-red-950/30 text-red-100"
-              : "border-neutral-800 bg-neutral-900 text-neutral-100"
+              : "border-[color:var(--border-soft)] bg-[color:var(--surface)] text-[color:var(--foreground)]"
         }`}
       >
         {!isUser && meta?.trace && meta.trace.length > 0 && (
@@ -695,10 +695,10 @@ function MessageBubble({
             used={meta.documentsUsedTotal || 0}
           />
         )}
-        <p className="whitespace-pre-wrap">
+        <p className="streaming-text">
           {message.text}
-          {!isUser && streaming && !message.text && (
-            <span className="text-neutral-500">▍</span>
+          {!isUser && streaming && (
+            <span className="sar-soft-pulse ml-0.5 text-neutral-500">▍</span>
           )}
         </p>
         {!isUser && meta?.citations && meta.citations.length > 0 && (
@@ -811,7 +811,7 @@ function TraceStrip({
                 ? lastActive
                   ? "bg-blue-500/30 text-blue-100"
                   : "bg-emerald-900/40 text-emerald-300"
-                : "border border-neutral-800 text-neutral-600"
+                : "border border-[color:var(--border-soft)] text-neutral-600"
             }`}
           >
             {t.name}
@@ -851,7 +851,7 @@ function RbacDenied({ seen, used }: { seen: number; used: number }) {
 
 function CitationsPanel({ citations }: { citations: Citation[] }) {
   return (
-    <details className="mt-3 rounded border border-neutral-800 bg-neutral-950/60 p-2 text-[11px] text-neutral-300">
+    <details className="mt-3 rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)]/60 p-2 text-[11px] text-neutral-300">
       <summary className="cursor-pointer text-neutral-300">
         📚 {citations.length} citation{citations.length === 1 ? "" : "s"}
       </summary>
@@ -859,7 +859,7 @@ function CitationsPanel({ citations }: { citations: Citation[] }) {
         {citations.map((c, i) => (
           <li
             key={i}
-            className="rounded border border-neutral-800 bg-neutral-900/40 p-2"
+            className="rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)]/40 p-2"
           >
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-neutral-400">
               <span className="rounded bg-neutral-800 px-1.5 py-0.5">
@@ -933,9 +933,9 @@ function AuditPanel({
     URL.revokeObjectURL(url);
   }
   return (
-    <div className="rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm">
+    <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)]/80 p-3 text-sm">
       <div className="mb-2 flex items-center gap-2">
-        <span className="font-medium text-neutral-100">
+        <span className="font-medium text-[color:var(--foreground)]">
           Audit trail · SHA-256 chained
         </span>
         <span className="text-xs text-neutral-500">
@@ -966,7 +966,7 @@ function AuditPanel({
           {items.map((e, i) => (
             <li
               key={`${e.entry_hash ?? i}`}
-              className="rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]"
+              className="rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-2 text-[11px]"
             >
               <div className="flex flex-wrap gap-2 text-[10px] text-neutral-400">
                 <span>{e.timestamp}</span>
@@ -1035,6 +1035,7 @@ function UploadsPanel({
   const allowedExt = uploads?.allowed_extensions || [".txt", ".md", ".pdf"];
   const maxFiles = uploads?.max_files ?? 5;
   const maxBytes = uploads?.max_bytes ?? 5 * 1024 * 1024;
+  const maxChunks = uploads?.max_chunks_per_file ?? 60;
   const count = uploads?.count ?? 0;
   const capReached = count >= maxFiles;
 
@@ -1056,13 +1057,14 @@ function UploadsPanel({
   }
 
   return (
-    <div className="rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm">
+    <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)]/80 p-3 text-sm">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="font-medium text-neutral-100">
+        <span className="font-medium text-[color:var(--foreground)]">
           Upload your own documents
         </span>
-        <span className="text-xs text-neutral-500">
-          {count}/{maxFiles} files · max {formatBytes(maxBytes)} · {allowedExt.join(", ")}
+        <span className="text-xs text-neutral-400">
+          {count}/{maxFiles} files · max {formatBytes(maxBytes)} · up to{" "}
+          {maxChunks} chunks/file · {allowedExt.join(", ")}
         </span>
         <button
           onClick={() => void onRefresh()}
@@ -1095,16 +1097,16 @@ function UploadsPanel({
           dragOver
             ? "border-blue-500 bg-blue-500/10 text-blue-200"
             : capReached
-              ? "border-neutral-800 bg-neutral-950 text-neutral-500"
-              : "border-neutral-700 bg-neutral-950 text-neutral-400 hover:border-neutral-500"
+              ? "border-[color:var(--border-soft)] bg-[color:var(--surface)] text-neutral-500"
+              : "border-neutral-700 bg-[color:var(--surface)] text-neutral-400 hover:border-neutral-500"
         }`}
       >
         {busy ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-1 w-32 overflow-hidden rounded-full bg-neutral-800">
-              <div className="h-full w-1/3 animate-pulse bg-blue-500" />
+          <div className="flex flex-col items-center gap-2 py-1">
+            <div className="h-1.5 w-40 overflow-hidden rounded-full bg-neutral-800">
+              <div className="sar-soft-pulse h-full w-1/3 rounded-full bg-[color:var(--accent)]" />
             </div>
-            <span>Ingesting -- parsing + chunking + embedding…</span>
+            <span>Ingesting — parsing → chunking → embedding…</span>
           </div>
         ) : capReached ? (
           <span>
@@ -1119,9 +1121,14 @@ function UploadsPanel({
               Pick file
             </button>{" "}
             <span>or drop one here.</span>
-            <p className="mt-1 text-[10px] text-neutral-500">
+            <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">
               File stays in your per-session Qdrant collection only and
               auto-purges after 24 h. Other sessions cannot see it.
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-amber-300/80">
+              Tip: short notes work best. Big PDFs that chunk to more than{" "}
+              {maxChunks} pieces are rejected so chat answers stay snappy on
+              the free-tier CPU.
             </p>
           </>
         )}
@@ -1139,7 +1146,7 @@ function UploadsPanel({
           {uploads.items.map((item) => (
             <li
               key={item.file_id}
-              className="flex items-center gap-2 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]"
+              className="flex items-center gap-2 rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-2 text-[11px]"
             >
               <span className="font-mono text-neutral-300">📄</span>
               <span className="truncate text-neutral-200">{item.filename}</span>
@@ -1181,7 +1188,7 @@ function ByokDrawer({
   const [ollamaUrl, setOllamaUrl] = useState(current?.ollamaUrl ?? "");
 
   return (
-    <div className="rounded-md border border-neutral-800 bg-neutral-900 p-4 text-sm">
+    <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4 text-sm">
       <div className="mb-2 text-amber-300">
         ⚠ Public demo — use a throwaway API key. Do not paste production
         credentials.
@@ -1208,7 +1215,7 @@ function ByokDrawer({
           onChange={(e) => setKey(e.target.value)}
           placeholder={`paste ${provider} API key`}
           autoComplete="off"
-          className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm font-mono"
+          className="w-full rounded border border-neutral-700 bg-[color:var(--surface)] px-3 py-2 text-sm font-mono"
         />
         {provider === "ollama" && (
           <input
@@ -1216,7 +1223,7 @@ function ByokDrawer({
             value={ollamaUrl}
             onChange={(e) => setOllamaUrl(e.target.value)}
             placeholder="https://your-ollama.example.com:11434"
-            className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm font-mono"
+            className="w-full rounded border border-neutral-700 bg-[color:var(--surface)] px-3 py-2 text-sm font-mono"
           />
         )}
         <div className="flex gap-2">

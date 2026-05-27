@@ -46,7 +46,16 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+      <body
+        className="min-h-screen antialiased"
+        style={{
+          background: "var(--background)",
+          color: "var(--foreground)",
+          // 15px base reads better than 14px on 1080p displays at
+          // long viewing distances without looking oversized on laptops.
+          fontSize: "15px",
+        }}
+      >
         {children}
       </body>
     </html>

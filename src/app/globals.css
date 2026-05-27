@@ -1,26 +1,86 @@
 @import "tailwindcss";
 
+/* SecureAgentRAG — dark-first palette tuned for long reading sessions.
+ *
+ * Pure black + pure white is fatiguing under flicker-free OLED. Push the
+ * base bg to a warmer near-black, soften foreground to off-white, and
+ * use a calm indigo accent so trace pills and badges feel less neon. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0c0d10; /* warmer than #0a0a0a; less retinal glare */
+  --foreground: #e6e7ea; /* off-white; reduces halation on small text */
+  --surface: #15171b; /* card surfaces, drawers */
+  --surface-strong: #1c1f25; /* hovered chips, raised badges */
+  --border-soft: #23262d; /* subtle dividers */
+  --border-strong: #2f333c; /* drawer + bubble outlines */
+  --accent: #6b8afd; /* indigo at AA contrast on the bg */
+  --accent-soft: rgba(107, 138, 253, 0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-border-soft: var(--border-soft);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  /* Slightly larger default line-height so chat bubbles breathe. */
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+/* Reduce reflow flicker when SSE tokens append mid-bubble. */
+.streaming-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Calmer pulse on trace pills + upload progress -- pure Tailwind animate-pulse
+ * is too aggressive (50% opacity drop every 1 s). */
+@keyframes sar-soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+.sar-soft-pulse {
+  animation: sar-soft-pulse 1.8s ease-in-out infinite;
+}
+
+/* Scrollbar — subtle, on-brand. Browsers without ::-webkit-scrollbar
+ * still get something usable thanks to scrollbar-color. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2f333c transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #2f333c;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #3b3f48;
 }
