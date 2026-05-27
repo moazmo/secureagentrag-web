@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://secureagentrag-web.vercel.app/sitemap.xml

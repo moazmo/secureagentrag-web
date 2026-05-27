@@ -11,8 +11,10 @@
  * launch-plan/03-backend-byok.md design doc.
  *
  * If localStorage is empty, requests fall back to the owner key on the
- * server side -- throttled to 3/h/IP. The UI shows a banner nudging
- * visitors to paste their own key.
+ * server side -- throttled to 10/h/IP via the per-IP X-Forwarded-For
+ * bucket. The UI shows a banner nudging visitors to paste their own
+ * key, and an explicit red 429 banner with a "Set my API key" CTA when
+ * the bucket is exhausted.
  */
 
 export type Provider = "groq" | "openai" | "anthropic" | "ollama";

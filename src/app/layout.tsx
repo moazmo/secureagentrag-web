@@ -4,20 +4,23 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "SecureAgentRAG — Privacy-first multi-agent RAG demo",
   description:
-    "Public BYOK demo of SecureAgentRAG. Paste your own LLM key, pick a persona, watch the corrective RAG loop run end-to-end with NLI faithfulness gate, SHA-256 audit chain, and RBAC enforced at the vector DB layer.",
+    "Public BYOK demo of SecureAgentRAG — privacy-first multi-agent RAG with RBAC at the Qdrant vector-DB layer, sensitivity-based inference routing, NLI citation-faithfulness gate, and a SHA-256 hash-chained audit log. Free to try, no credit card, no signup.",
   metadataBase: new URL("https://secureagentrag-web.vercel.app"),
   openGraph: {
-    title: "SecureAgentRAG",
+    title: "SecureAgentRAG — multi-agent RAG with RBAC + faithfulness gate",
     description:
-      "Privacy-first multi-agent RAG with RBAC, faithfulness gate, and tamper-evident audit chain.",
+      "Pick a persona, ask a question, watch the corrective RAG loop run end-to-end. RBAC at the vector layer · NLI faithfulness gate · SHA-256 audit chain · BYOK. $0/mo on Vercel + HF Spaces + Qdrant Cloud + Groq.",
     url: "https://secureagentrag-web.vercel.app",
+    siteName: "SecureAgentRAG",
     type: "website",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
     title: "SecureAgentRAG — multi-agent RAG with RBAC + faithfulness gate",
     description:
-      "Live BYOK demo. 9-node LangGraph, NLI faithfulness gate, SHA-256 audit chain, RBAC at the Qdrant payload layer.",
+      "Live BYOK demo. 9-node LangGraph, NLI faithfulness gate, SHA-256 audit chain, RBAC at the Qdrant payload layer. $0/mo.",
+    creator: "@moazmo",
   },
   robots: { index: true, follow: true },
   icons: {
@@ -26,18 +29,27 @@ export const metadata: Metadata = {
     apple: "/favicon.svg",
   },
   applicationName: "SecureAgentRAG",
-  authors: [{ name: "moazmo" }],
+  authors: [{ name: "moazmo", url: "https://github.com/moazmo" }],
+  creator: "moazmo",
+  publisher: "moazmo",
   keywords: [
     "RAG",
+    "Retrieval-Augmented Generation",
     "multi-agent",
     "LangGraph",
     "Qdrant",
     "BYOK",
+    "Bring Your Own Key",
     "RBAC",
     "faithfulness gate",
-    "NLI",
-    "privacy",
+    "NLI entailment",
+    "privacy-first",
     "audit chain",
+    "SHA-256",
+    "Groq",
+    "Next.js",
+    "Vercel",
+    "Hugging Face Spaces",
   ],
 };
 

@@ -21,6 +21,28 @@ const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://LeomordKaly-secureagentrag-api.hf.space";
 
+// Cold-start warmer.
+// HF Spaces CPU Basic idles after 48h of no traffic and takes 30-60s
+// to wake on the next request. The daily GitHub Actions keepalive cron
+// covers the long idle window, but a freshly-cold Vercel Edge instance
+// (rare: every ~10min of zero traffic) can still hit a cold backend on
+// its first request. Fire-and-forget ping at module load nudges the
+// Space awake while the visitor is still typing.
+// Safe to ignore the return value: the next user fetch hits a warm
+// container even if this race-loses.
+try {
+  void fetch(`${BACKEND_URL}/healthz`, {
+    method: "GET",
+    headers: { "User-Agent": "secureagentrag-web/edge-warmer" },
+    // 5s is plenty: a warm /healthz is <1s, a cold one is 30-60s. We
+    // don't care about the response, just initiating the TCP + TLS +
+    // container-wake handshake.
+    signal: AbortSignal.timeout(5000),
+  }).catch(() => {});
+} catch {
+  /* edge module-init must never throw */
+}
+
 interface ChatPostBody {
   query: string;
   preferCloud?: boolean;
