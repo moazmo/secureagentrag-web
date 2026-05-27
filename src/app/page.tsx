@@ -10,6 +10,14 @@ import {
 } from "@/lib/byok";
 import { DEMO_PROMPTS } from "@/lib/demo-prompts";
 import { streamSSE } from "@/lib/stream";
+import {
+  type UploadItem,
+  type UploadsList,
+  deleteUpload,
+  formatBytes,
+  listUploads,
+  uploadFile,
+} from "@/lib/uploads";
 
 type Persona = "engineer" | "compliance" | "executive";
 
@@ -104,6 +112,10 @@ export default function ChatPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [uploadsOpen, setUploadsOpen] = useState(false);
+  const [uploads, setUploads] = useState<UploadsList | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -409,6 +421,48 @@ export default function ChatPage() {
     }
   }, [auditOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const refreshUploads = useCallback(async () => {
+    if (!sessionId) return;
+    const list = await listUploads(sessionId, persona);
+    setUploads(list);
+  }, [sessionId, persona]);
+
+  useEffect(() => {
+    if (uploadsOpen) {
+      void refreshUploads();
+    }
+  }, [uploadsOpen, refreshUploads]);
+
+  const handleUpload = useCallback(
+    async (file: File) => {
+      if (!sessionId || uploadBusy) return;
+      setUploadBusy(true);
+      setUploadError(null);
+      try {
+        await uploadFile(sessionId, file, persona);
+        await refreshUploads();
+      } catch (e) {
+        setUploadError(e instanceof Error ? e.message : "upload failed");
+      } finally {
+        setUploadBusy(false);
+      }
+    },
+    [sessionId, persona, uploadBusy, refreshUploads],
+  );
+
+  const handleDeleteUpload = useCallback(
+    async (item: UploadItem) => {
+      if (!sessionId) return;
+      try {
+        await deleteUpload(sessionId, item.file_id, persona);
+        await refreshUploads();
+      } catch (e) {
+        setUploadError(e instanceof Error ? e.message : "delete failed");
+      }
+    },
+    [sessionId, persona, refreshUploads],
+  );
+
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 px-4 py-6">
       <header className="flex flex-col gap-3 border-b border-neutral-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -436,6 +490,17 @@ export default function ChatPage() {
           >
             github
           </a>
+          <button
+            onClick={() => setUploadsOpen((s) => !s)}
+            className={`rounded px-3 py-1 text-sm ${
+              uploads && uploads.count > 0
+                ? "border border-blue-700/60 bg-blue-900/30 text-blue-200"
+                : "border border-neutral-700 text-neutral-200 hover:border-neutral-500"
+            }`}
+            title="Upload your own document into this session's RAG corpus"
+          >
+            📎 {uploads && uploads.count > 0 ? `${uploads.count} file${uploads.count === 1 ? "" : "s"}` : "Upload"}
+          </button>
           <button
             onClick={() => setAuditOpen((s) => !s)}
             className="rounded border border-neutral-700 px-3 py-1 text-sm text-neutral-200 hover:border-neutral-500"
@@ -476,6 +541,18 @@ export default function ChatPage() {
             setByok(null);
             setDrawerOpen(false);
           }}
+        />
+      )}
+
+      {uploadsOpen && (
+        <UploadsPanel
+          uploads={uploads}
+          busy={uploadBusy}
+          error={uploadError}
+          onUpload={handleUpload}
+          onDelete={handleDeleteUpload}
+          onRefresh={refreshUploads}
+          onDismissError={() => setUploadError(null)}
         />
       )}
 
@@ -927,6 +1004,153 @@ function AuditPanel({
                   A: {e.details.response_summary}
                 </p>
               )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function UploadsPanel({
+  uploads,
+  busy,
+  error,
+  onUpload,
+  onDelete,
+  onRefresh,
+  onDismissError,
+}: {
+  uploads: UploadsList | null;
+  busy: boolean;
+  error: string | null;
+  onUpload: (file: File) => void | Promise<void>;
+  onDelete: (item: UploadItem) => void | Promise<void>;
+  onRefresh: () => void | Promise<void>;
+  onDismissError: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const allowedExt = uploads?.allowed_extensions || [".txt", ".md", ".pdf"];
+  const maxFiles = uploads?.max_files ?? 5;
+  const maxBytes = uploads?.max_bytes ?? 5 * 1024 * 1024;
+  const count = uploads?.count ?? 0;
+  const capReached = count >= maxFiles;
+
+  function onPickClick() {
+    fileInputRef.current?.click();
+  }
+
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await onUpload(file);
+    if (e.target) e.target.value = "";
+  }
+
+  async function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) await onUpload(file);
+  }
+
+  return (
+    <div className="rounded-md border border-neutral-800 bg-neutral-900/80 p-3 text-sm">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="font-medium text-neutral-100">
+          Upload your own documents
+        </span>
+        <span className="text-xs text-neutral-500">
+          {count}/{maxFiles} files · max {formatBytes(maxBytes)} · {allowedExt.join(", ")}
+        </span>
+        <button
+          onClick={() => void onRefresh()}
+          className="ml-auto rounded border border-neutral-700 px-2 py-0.5 text-xs hover:border-neutral-500"
+        >
+          refresh
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-2 flex items-start gap-2 rounded border border-red-800/60 bg-red-950/40 px-2 py-1 text-xs text-red-200">
+          <span className="flex-1">⚠ {error}</span>
+          <button
+            onClick={onDismissError}
+            className="rounded border border-red-700/60 px-1 text-[10px] hover:bg-red-900/40"
+          >
+            dismiss
+          </button>
+        </div>
+      )}
+
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+        className={`rounded-md border-2 border-dashed p-4 text-center text-xs transition ${
+          dragOver
+            ? "border-blue-500 bg-blue-500/10 text-blue-200"
+            : capReached
+              ? "border-neutral-800 bg-neutral-950 text-neutral-500"
+              : "border-neutral-700 bg-neutral-950 text-neutral-400 hover:border-neutral-500"
+        }`}
+      >
+        {busy ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-1 w-32 overflow-hidden rounded-full bg-neutral-800">
+              <div className="h-full w-1/3 animate-pulse bg-blue-500" />
+            </div>
+            <span>Ingesting -- parsing + chunking + embedding…</span>
+          </div>
+        ) : capReached ? (
+          <span>
+            File limit reached. Delete an existing upload to add another.
+          </span>
+        ) : (
+          <>
+            <button
+              onClick={onPickClick}
+              className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-500"
+            >
+              Pick file
+            </button>{" "}
+            <span>or drop one here.</span>
+            <p className="mt-1 text-[10px] text-neutral-500">
+              File stays in your per-session Qdrant collection only and
+              auto-purges after 24 h. Other sessions cannot see it.
+            </p>
+          </>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={allowedExt.join(",")}
+          onChange={onFileSelected}
+          className="hidden"
+        />
+      </div>
+
+      {uploads && uploads.items.length > 0 && (
+        <ul className="mt-3 space-y-1.5">
+          {uploads.items.map((item) => (
+            <li
+              key={item.file_id}
+              className="flex items-center gap-2 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]"
+            >
+              <span className="font-mono text-neutral-300">📄</span>
+              <span className="truncate text-neutral-200">{item.filename}</span>
+              <span className="text-neutral-500">· {item.chunks} chunk{item.chunks === 1 ? "" : "s"}</span>
+              <button
+                onClick={() => void onDelete(item)}
+                className="ml-auto rounded border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-300 hover:border-red-500 hover:text-red-300"
+                title="Drop all chunks for this upload"
+              >
+                delete
+              </button>
             </li>
           ))}
         </ul>
