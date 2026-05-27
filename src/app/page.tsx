@@ -120,6 +120,13 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [streamSupport, setStreamSupport] = useState(true);
+  // Throttle banner state: when the owner-key per-IP quota is exhausted,
+  // surface a dedicated banner near the input with a "Set API key" CTA
+  // instead of dropping the hint into a regular assistant bubble.
+  const [throttleHint, setThrottleHint] = useState<{
+    hint: string;
+    retryAfter?: number;
+  } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const transcriptRef = useRef<HTMLElement | null>(null);
 
@@ -167,19 +174,32 @@ export default function ChatPage() {
         }),
       });
 
-      // 429 / 4xx: render the JSON detail as the assistant message body.
+      // 429 / 4xx: surface dedicated throttle banner for owner-key cap
+      // exhaustion (the only error we expect at scale); other 4xx renders
+      // as a regular blocked assistant bubble.
       if (!upstream.ok) {
         let detail = "request failed";
+        let retryAfter: number | undefined;
+        let isThrottle = false;
         try {
           const j = (await upstream.json()) as Record<string, unknown>;
           const d = j.detail as Record<string, unknown> | undefined;
           detail = (d?.hint as string) || (j.error as string) || detail;
+          if (d && d.reason === "owner_key_hourly_quota_exhausted") {
+            isThrottle = true;
+            const ra = d.retry_after_seconds;
+            if (typeof ra === "number") retryAfter = ra;
+          }
         } catch {
           /* ignore parse */
         }
+        // Drop the pending assistant bubble we seeded -- the throttle
+        // banner is a better surface than dumping the message into chat.
         setMessages((m) => {
           const cp = [...m];
-          if (assistantIdx >= 0) {
+          if (assistantIdx >= 0 && cp[assistantIdx]?.text === "") {
+            cp.splice(assistantIdx, 1);
+          } else if (assistantIdx >= 0) {
             cp[assistantIdx] = {
               role: "assistant",
               text: detail,
@@ -188,6 +208,9 @@ export default function ChatPage() {
           }
           return cp;
         });
+        if (isThrottle) {
+          setThrottleHint({ hint: detail, retryAfter });
+        }
         return;
       }
 
@@ -520,12 +543,47 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {!byok && (
+      {!byok && !throttleHint && (
         <div className="rounded-md border border-amber-700/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-          Using the owner&apos;s throttled key (3 requests / hour / IP). Paste
+          Using the owner&apos;s throttled key (10 requests / hour / IP). Paste
           your own Groq / OpenAI / Anthropic key for unlimited use — it lives
-          only in your browser&apos;s <span className="font-mono">localStorage</span>{" "}
-          and never reaches our database.
+          only in your browser&apos;s{" "}
+          <span className="font-mono">localStorage</span> and never reaches
+          our database.
+        </div>
+      )}
+
+      {throttleHint && (
+        <div className="flex flex-col gap-2 rounded-md border border-red-700/50 bg-red-950/40 px-4 py-3 text-sm text-red-100 sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <p className="font-medium text-red-100">
+              ⛔ Hourly limit reached on the owner key
+            </p>
+            <p className="mt-1 text-xs text-red-200/90">
+              {throttleHint.hint}
+              {typeof throttleHint.retryAfter === "number" &&
+              throttleHint.retryAfter > 0
+                ? ` Resets in ~${Math.max(1, Math.round(throttleHint.retryAfter / 60))} min.`
+                : ""}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setDrawerOpen(true);
+                setThrottleHint(null);
+              }}
+              className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500"
+            >
+              🔑 Set my API key
+            </button>
+            <button
+              onClick={() => setThrottleHint(null)}
+              className="rounded border border-red-700/60 px-3 py-1.5 text-xs text-red-100 hover:bg-red-900/40"
+            >
+              dismiss
+            </button>
+          </div>
         </div>
       )}
 
