@@ -9,6 +9,12 @@ Public BYOK demo for [SecureAgentRAG](https://github.com/moazmo/secureagentrag).
 - **Source (frontend):** https://github.com/moazmo/secureagentrag-web
 - **Source (backend):** https://github.com/moazmo/secureagentrag
 
+## 🎬 Demo video (101s)
+
+<video src="https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/secureagentrag-demo.mp4" controls width="100%"></video>
+
+▶️ **[Watch / download the demo (1080p MP4)](https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/secureagentrag-demo.mp4)** — real-page walkthrough, narration + captions.
+
 ## What this is
 
 A multi-page SSE-streaming chat UI that:
