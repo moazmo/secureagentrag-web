@@ -76,29 +76,32 @@ detour was cancelled on 2026-05-27 and removed from this repo.
 ```
 src/
   app/
-    layout.tsx           # html / body shell, dark mode, OpenGraph
+    layout.tsx           # html / body shell, dark mode, OG + analytics
     page.tsx             # static landing page (/)
-    chat/page.tsx        # BYOK chat UI (/chat)
-    corpus/page.tsx      # base corpus browser (/corpus)
-    personas/page.tsx    # persona RBAC inspector (/personas)
-    status/page.tsx      # live health dashboard (/status)
+    opengraph-image.tsx  # next/og 1200x630 social card (edge-rendered)
+    chat/page.tsx        # BYOK chat UI (/chat) — SSE, Markdown render, 📚 KB panel
+    corpus/page.tsx      # base corpus browser (/corpus, SSR)
+    personas/page.tsx    # persona RBAC inspector (/personas, SSR)
+    status/page.tsx      # live health dashboard (/status, client-polled)
     globals.css          # tailwind directives + eye-comfort palette
     api/
-      chat/route.ts          # Edge proxy → /byok/chat
+      chat/route.ts          # Edge proxy → /byok/chat (+ cold-start warmer)
       chat/stream/route.ts   # Edge SSE proxy → /byok/chat/stream
       audit/route.ts         # Edge proxy → /byok/audit
       uploads/route.ts       # Edge multipart proxy → /byok/uploads
       uploads/[fileId]/route.ts  # DELETE one upload
-  components/
-    chat/                # ChatPage extracted into focused components
+      corpus/route.ts        # Edge proxy → /byok/corpus
+      personas/route.ts      # Edge proxy → /byok/personas
   lib/
     byok.ts              # localStorage helpers + session-id factory
     demo-prompts.ts      # persona-tuned starter prompts
     stream.ts            # SSE parser (no SDK dependency)
     uploads.ts           # multipart upload + JSON-safe error map
-    history.ts           # IndexedDB conversation persistence
+    markdown.tsx         # zero-dep Markdown → JSX renderer ([N] citation chips)
 public/
   favicon.svg
+  robots.txt
+  sitemap.xml
   robots.txt
   sitemap.xml
 ```

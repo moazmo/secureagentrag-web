@@ -25,7 +25,9 @@ to work on the **`secureagentrag-web`** frontend without breaking it.
 | Style | Tailwind v4 (`@tailwindcss/postcss`) |
 | Language | TypeScript 5 |
 | Streaming | Native `fetch` + `ReadableStream` (no Vercel AI SDK dependency) |
-| Persistence | `localStorage` (BYOK key, session id) + IndexedDB (conversation history) |
+| Markdown | Hand-written `src/lib/markdown.tsx` (zero-dep → JSX, `[N]` citation chips) |
+| Persistence | `localStorage` only (BYOK key + session id). No cookies, no IndexedDB. |
+| Analytics | `@vercel/analytics` + `@vercel/speed-insights` (no-op until dashboard-enabled) |
 | Deploy | Vercel Hobby |
 | Edge runtime | All `src/app/api/*/route.ts` files |
 
