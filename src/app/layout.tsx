@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -69,6 +71,12 @@ export default function RootLayout({
         }}
       >
         {children}
+        {/* Vercel Web Analytics + Speed Insights. Both are no-ops until
+            enabled in the Vercel dashboard (Project → Analytics / Speed
+            Insights). Free tier: 2,500 events/mo. No cookies, no PII —
+            privacy-aligned with the rest of the demo. */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

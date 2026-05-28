@@ -9,6 +9,7 @@ import {
   saveByok,
 } from "@/lib/byok";
 import { DEMO_PROMPTS } from "@/lib/demo-prompts";
+import { renderMarkdown } from "@/lib/markdown";
 import { streamSSE } from "@/lib/stream";
 import {
   type UploadItem,
@@ -76,19 +77,64 @@ interface ChatMessage {
   meta?: AssistantMeta;
 }
 
-const PERSONAS: { value: Persona; label: string; hint: string }[] = [
-  { value: "engineer", label: "Engineer", hint: "clearance 2 · engineering" },
+// Persona presets mirror the backend _DEMO_PERSONAS dispatch table. The
+// `roles` + `clearance` fields let the knowledge-base panel compute,
+// client-side, which base-corpus docs each persona is authorized to see
+// — the same RBAC math the backend applies at the Qdrant payload layer
+// (sensitivity_level_int <= clearance AND roles match-any). This is
+// transparency, not enforcement: the real filter still runs server-side.
+const PERSONAS: {
+  value: Persona;
+  label: string;
+  hint: string;
+  clearance: number;
+  roles: string[];
+}[] = [
+  {
+    value: "engineer",
+    label: "Engineer",
+    hint: "clearance 2 · engineering",
+    clearance: 2,
+    roles: ["engineering"],
+  },
   {
     value: "compliance",
     label: "Compliance",
     hint: "clearance 3 · compliance + legal",
+    clearance: 3,
+    roles: ["compliance", "legal"],
   },
   {
     value: "executive",
     label: "Executive",
     hint: "clearance 3 · executive + compliance + engineering",
+    clearance: 3,
+    roles: ["executive", "compliance", "engineering"],
   },
 ];
+
+const SENSITIVITY_RANK: Record<string, number> = { low: 1, medium: 2, high: 3 };
+
+/** A base-corpus document as returned by /api/corpus. */
+interface CorpusDoc {
+  source_file: string;
+  chunks: number;
+  sensitivity_level: string;
+  roles: string[];
+}
+
+/**
+ * Mirror the backend RBAC check so the knowledge-base panel can show a
+ * persona which docs it can / cannot reach. Visible iff the persona's
+ * clearance covers the doc's sensitivity AND at least one role overlaps.
+ */
+function personaCanAccess(doc: CorpusDoc, personaValue: Persona): boolean {
+  const p = PERSONAS.find((x) => x.value === personaValue);
+  if (!p) return false;
+  const docRank = SENSITIVITY_RANK[(doc.sensitivity_level || "low").toLowerCase()] ?? 1;
+  if (docRank > p.clearance) return false;
+  return doc.roles.some((r) => p.roles.includes(r));
+}
 
 // All graph nodes in execution order -- displayed as the trace pill strip
 // even before the first token arrives, so the visitor sees the pipeline
@@ -116,6 +162,8 @@ export default function ChatPage() {
   const [uploads, setUploads] = useState<UploadsList | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [kbOpen, setKbOpen] = useState(false);
+  const [corpus, setCorpus] = useState<CorpusDoc[] | null>(null);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -133,6 +181,26 @@ export default function ChatPage() {
   useEffect(() => {
     setByok(loadByok());
     setSessionId(getOrCreateSessionId());
+  }, []);
+
+  // Load the base-corpus catalogue once so the visitor can see exactly
+  // what is in the knowledge base — and, per persona, what they can and
+  // cannot reach. Fails silent: the chat works fine without it.
+  useEffect(() => {
+    let stopped = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/corpus", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as { items?: CorpusDoc[] };
+        if (!stopped) setCorpus(j.items || []);
+      } catch {
+        /* corpus catalogue is best-effort */
+      }
+    })();
+    return () => {
+      stopped = true;
+    };
   }, []);
 
   // Keep the transcript pinned to the bottom on append/streaming token.
@@ -525,6 +593,17 @@ export default function ChatPage() {
             📎 {uploads && uploads.count > 0 ? `${uploads.count} file${uploads.count === 1 ? "" : "s"}` : "Upload"}
           </button>
           <button
+            onClick={() => setKbOpen((s) => !s)}
+            className={`rounded px-3 py-1 text-sm ${
+              kbOpen
+                ? "border border-blue-700/60 bg-blue-900/30 text-blue-200"
+                : "border border-neutral-700 text-neutral-200 hover:border-neutral-500"
+            }`}
+            title="Browse the documents already in the knowledge base"
+          >
+            📚 {corpus ? `${corpus.length} docs` : "Docs"}
+          </button>
+          <button
             onClick={() => setAuditOpen((s) => !s)}
             className="rounded border border-neutral-700 px-3 py-1 text-sm text-neutral-200 hover:border-neutral-500"
           >
@@ -614,6 +693,8 @@ export default function ChatPage() {
         />
       )}
 
+      {kbOpen && <KnowledgeBasePanel corpus={corpus} persona={persona} />}
+
       {auditOpen && <AuditPanel items={audit} onRefresh={refreshAudit} />}
 
       <section className="flex flex-wrap items-center gap-2 text-xs">
@@ -702,13 +783,25 @@ function EmptyState({
           Privacy-first multi-agent RAG demo.
         </p>
         <p className="mt-2 text-xs text-neutral-400">
-          Ten documents are indexed in a Qdrant vector store with an RBAC
-          payload filter. Pick a persona above and ask a question — chunks
-          you are not authorized to see are physically not returned,
-          regardless of similarity score. The 9-node LangGraph below
-          handles routing, prompt-injection guardrails, retrieval, grading,
-          synthesis, and an NLI faithfulness gate that flags any sentence
-          the cited chunk does not entail.
+          A curated set of documents is indexed in a Qdrant vector store
+          with an RBAC payload filter. Pick a persona above and ask a
+          question — chunks you are not authorized to see are physically
+          not returned, regardless of similarity score. The 9-node
+          LangGraph below handles routing, prompt-injection guardrails,
+          retrieval, grading, synthesis, and an NLI faithfulness gate that
+          flags any sentence the cited chunk does not entail.
+        </p>
+        <p className="mt-2 text-xs text-neutral-400">
+          👉 Tap{" "}
+          <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[11px]">
+            📚 Docs
+          </span>{" "}
+          in the header to see every document in the knowledge base and
+          exactly which ones this persona can read — or{" "}
+          <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[11px]">
+            📎 Upload
+          </span>{" "}
+          your own.
         </p>
       </div>
       <p className="px-1 text-xs uppercase tracking-wider text-neutral-500">
@@ -810,12 +903,16 @@ function MessageBubble({
             used={meta.documentsUsedTotal || 0}
           />
         )}
-        <p className="streaming-text">
-          {message.text}
-          {!isUser && streaming && (
-            <span className="sar-soft-pulse ml-0.5 text-neutral-500">▍</span>
-          )}
-        </p>
+        {isUser ? (
+          <p className="streaming-text whitespace-pre-wrap">{message.text}</p>
+        ) : (
+          <div className="streaming-text text-sm leading-relaxed">
+            {renderMarkdown(message.text)}
+            {streaming && (
+              <span className="sar-soft-pulse ml-0.5 text-neutral-500">▍</span>
+            )}
+          </div>
+        )}
         {!isUser && meta?.citations && meta.citations.length > 0 && (
           <CitationsPanel citations={meta.citations} />
         )}
@@ -1055,6 +1152,92 @@ function Badge({
       className={`cursor-help rounded px-1.5 py-0.5 ${palette[tone]}`}
     >
       {label}
+    </span>
+  );
+}
+
+function KnowledgeBasePanel({
+  corpus,
+  persona,
+}: {
+  corpus: CorpusDoc[] | null;
+  persona: Persona;
+}) {
+  if (corpus === null) {
+    return (
+      <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)]/80 p-3 text-xs text-neutral-500">
+        Loading the knowledge base catalogue…
+      </div>
+    );
+  }
+  const accessible = corpus.filter((d) => personaCanAccess(d, persona));
+  const blocked = corpus.filter((d) => !personaCanAccess(d, persona));
+  return (
+    <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)]/80 p-3 text-sm">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="font-medium text-[color:var(--foreground)]">
+          Knowledge base
+        </span>
+        <span className="text-xs text-neutral-500">
+          {corpus.length} documents · {accessible.length} you can read as{" "}
+          <span className="text-blue-300">{persona}</span>
+          {blocked.length > 0 && ` · ${blocked.length} RBAC-locked`}
+        </span>
+      </div>
+      <p className="mb-3 text-[11px] leading-relaxed text-neutral-400">
+        Everything in the shared corpus is listed below — including the
+        documents your current persona is <em>not</em> cleared to read.
+        Switch persona to watch the locks change. The lock is enforced at
+        the Qdrant payload layer, not here: a 🔒 doc never reaches the LLM
+        no matter how you phrase the question.
+      </p>
+      <ul className="space-y-1.5">
+        {[...accessible, ...blocked].map((d) => {
+          const ok = personaCanAccess(d, persona);
+          return (
+            <li
+              key={d.source_file}
+              className={`flex flex-wrap items-center gap-2 rounded border p-2 text-[11px] ${
+                ok
+                  ? "border-[color:var(--border-soft)] bg-[color:var(--surface)]"
+                  : "border-red-900/30 bg-red-950/20 opacity-70"
+              }`}
+            >
+              <span>{ok ? "✅" : "🔒"}</span>
+              <span className="font-mono text-neutral-200">{d.source_file}</span>
+              <span className="text-neutral-500">
+                · {d.chunks} chunk{d.chunks === 1 ? "" : "s"}
+              </span>
+              <SensitivityTag value={d.sensitivity_level} />
+              <span className="ml-auto flex flex-wrap gap-1">
+                {d.roles.map((r) => (
+                  <span
+                    key={r}
+                    className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400"
+                  >
+                    {r}
+                  </span>
+                ))}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function SensitivityTag({ value }: { value: string }) {
+  const v = (value || "low").toLowerCase();
+  const palette =
+    v === "high"
+      ? "bg-red-900/40 text-red-300"
+      : v === "medium"
+        ? "bg-amber-900/40 text-amber-200"
+        : "bg-emerald-900/40 text-emerald-300";
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${palette}`}>
+      {v}
     </span>
   );
 }
