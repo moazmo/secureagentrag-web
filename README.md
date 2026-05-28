@@ -11,9 +11,9 @@ Public BYOK demo for [SecureAgentRAG](https://github.com/moazmo/secureagentrag).
 
 ## 🎬 Demo video (101s)
 
-<video src="https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/secureagentrag-demo.mp4" controls width="100%"></video>
+[![SecureAgentRAG demo — click for the full 1080p video with narration](https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/demo.gif)](https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/secureagentrag-demo.mp4)
 
-▶️ **[Watch / download the demo (1080p MP4)](https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/secureagentrag-demo.mp4)** — real-page walkthrough, narration + captions.
+▶️ **[Watch / download the full 1080p video](https://github.com/moazmo/secureagentrag/releases/download/v1.0.0-launch/secureagentrag-demo.mp4)** — real-page walkthrough, TTS narration + captions. (Preview above autoplays.)
 
 ## What this is
 
