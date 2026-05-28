@@ -803,6 +803,24 @@ function EmptyState({
           </span>{" "}
           your own.
         </p>
+        <p className="mt-3 rounded border border-amber-700/40 bg-amber-950/20 px-2.5 py-1.5 text-[11px] leading-relaxed text-amber-200/90">
+          🔓 Privacy note: this public demo has no local model, so{" "}
+          <strong className="font-medium">all</strong> inference — including
+          content classified <span className="font-mono">high</span>{" "}
+          sensitivity — runs on Groq cloud. The{" "}
+          <span className="font-mono">sensitivity:</span> badge on each answer
+          tells you when that happened. Self-host with a local Ollama for the
+          “HIGH never leaves local” guarantee —{" "}
+          <a
+            href="https://github.com/moazmo/secureagentrag/blob/main/docs/BYOK_PRIVACY_TRADEOFFS.md"
+            target="_blank"
+            rel="noopener"
+            className="underline decoration-dotted underline-offset-2 hover:text-amber-100"
+          >
+            how &amp; why
+          </a>
+          .
+        </p>
       </div>
       <p className="px-1 text-xs uppercase tracking-wider text-neutral-500">
         Try one of these — tuned for {persona}:
