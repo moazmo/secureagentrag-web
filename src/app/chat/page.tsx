@@ -14,10 +14,12 @@ import { streamSSE } from "@/lib/stream";
 import {
   type UploadItem,
   type UploadsList,
+  UploadPendingError,
   deleteUpload,
   formatBytes,
   listUploads,
   uploadFile,
+  waitForUploadLanded,
 } from "@/lib/uploads";
 
 type Persona = "engineer" | "compliance" | "executive";
@@ -529,16 +531,51 @@ export default function ChatPage() {
       if (!sessionId || uploadBusy) return;
       setUploadBusy(true);
       setUploadError(null);
+      const beforeCount = uploads?.count ?? 0;
+
+      // Run the POST, but DON'T trust its result to decide success/failure.
+      // On a cold free-tier backend the Vercel Edge proxy cuts the POST at
+      // ~25-30 s while the HF Space keeps embedding + upserting — so a thrown
+      // UploadPendingError (or even a clean return) is confirmed against the
+      // list, which is the source of truth. Real rejections (bad ext, too
+      // large, quota) throw a plain Error and fail fast.
+      let pending = false;
       try {
         await uploadFile(sessionId, file, persona);
-        await refreshUploads();
       } catch (e) {
-        setUploadError(e instanceof Error ? e.message : "upload failed");
+        if (e instanceof UploadPendingError) {
+          pending = true;
+        } else {
+          setUploadError(e instanceof Error ? e.message : "upload failed");
+          setUploadBusy(false);
+          return;
+        }
+      }
+
+      try {
+        // Fast path: it already landed.
+        const fresh = await listUploads(sessionId, persona);
+        if (fresh && fresh.count > beforeCount) {
+          setUploads(fresh);
+          return;
+        }
+        // Slow path: poll while the cold backend finishes embedding.
+        const landed = await waitForUploadLanded(sessionId, beforeCount, persona);
+        if (landed) {
+          setUploads(landed);
+        } else {
+          await refreshUploads();
+          setUploadError(
+            pending
+              ? "Still processing on the server — reopen this panel in a minute to check; it usually lands."
+              : "Upload didn't appear — try again, or reopen this panel shortly.",
+          );
+        }
       } finally {
         setUploadBusy(false);
       }
     },
-    [sessionId, persona, uploadBusy, refreshUploads],
+    [sessionId, persona, uploadBusy, uploads, refreshUploads],
   );
 
   const handleDeleteUpload = useCallback(
@@ -1451,7 +1488,10 @@ function UploadsPanel({
             <div className="h-1.5 w-40 overflow-hidden rounded-full bg-neutral-800">
               <div className="sar-soft-pulse h-full w-1/3 rounded-full bg-[color:var(--accent)]" />
             </div>
-            <span>Ingesting — parsing → chunking → embedding…</span>
+            <span>
+              Ingesting — parsing → chunking → embedding. On a cold free-tier
+              server this can take ~30–60 s; it&apos;ll appear below when done.
+            </span>
           </div>
         ) : capReached ? (
           <span>
