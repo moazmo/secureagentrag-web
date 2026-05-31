@@ -71,6 +71,10 @@ interface AssistantMeta {
   querySensitivity?: string;
   documentsSeenTotal?: number;
   documentsUsedTotal?: number;
+  // The originating question + persona for this answer, so the per-answer
+  // "Share" button can rebuild a deep link that reproduces it.
+  query?: string;
+  persona?: Persona;
 }
 
 interface ChatMessage {
@@ -180,10 +184,39 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const transcriptRef = useRef<HTMLElement | null>(null);
 
+  // A shared answer link arrives as /chat?persona=…&q=… — auto-run it once the
+  // session is ready so a recruiter who opens the link sees the answer rebuild.
+  const [pendingShared, setPendingShared] = useState<string | null>(null);
+
   useEffect(() => {
     setByok(loadByok());
     setSessionId(getOrCreateSessionId());
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const p = sp.get("persona");
+      const q = sp.get("q");
+      if (p && PERSONAS.some((x) => x.value === p)) setPersona(p as Persona);
+      if (q && q.trim()) setPendingShared(q.trim());
+    } catch {
+      /* no query string */
+    }
   }, []);
+
+  // Fire the shared query once — after sessionId resolved and persona applied.
+  // Strip the query string so a refresh does not re-run it.
+  useEffect(() => {
+    if (pendingShared && sessionId) {
+      const q = pendingShared;
+      setPendingShared(null);
+      try {
+        window.history.replaceState(null, "", "/chat");
+      } catch {
+        /* history not available */
+      }
+      void send(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingShared, sessionId]);
 
   // Load the base-corpus catalogue once so the visitor can see exactly
   // what is in the knowledge base — and, per persona, what they can and
@@ -227,6 +260,8 @@ export default function ChatPage() {
           meta: {
             trace: GRAPH_NODES.map((n) => ({ name: n, done: false })),
             byokUsed: !!byok,
+            query,
+            persona,
           },
         });
         return next;
@@ -443,6 +478,8 @@ export default function ChatPage() {
             querySensitivity: payload.query_sensitivity,
             documentsSeenTotal: payload.documents_seen_total,
             documentsUsedTotal: payload.documents_used_total,
+            query,
+            persona,
           },
         },
       ]);
@@ -1037,8 +1074,8 @@ function MessageBubble({
               label={meta.byokUsed ? "BYOK" : "owner-key"}
               title={
                 meta.byokUsed
-                  ? "Visitor-supplied key, unthrottled."
-                  : "Owner key, 3 requests / IP / hour."
+                  ? "Visitor-supplied key — your key powers this request, unthrottled."
+                  : "Owner key, 10 requests / IP / hour."
               }
             />
             {meta.needsReview && (
@@ -1053,6 +1090,9 @@ function MessageBubble({
                 label={`${meta.documentsUsedTotal || 0}/${meta.documentsSeenTotal} docs`}
                 title={`${meta.documentsSeenTotal} retrieved → ${meta.documentsUsedTotal} used after grading.`}
               />
+            )}
+            {meta.query && !meta.blocked && (
+              <ShareButton query={meta.query} persona={meta.persona} />
             )}
           </div>
         )}
@@ -1182,6 +1222,35 @@ function FollowUpStrip({
         </button>
       ))}
     </div>
+  );
+}
+
+function ShareButton({ query, persona }: { query: string; persona?: Persona }) {
+  const [copied, setCopied] = useState(false);
+  function onShare() {
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const params = new URLSearchParams({ q: query });
+      if (persona) params.set("persona", persona);
+      void navigator.clipboard
+        .writeText(`${origin}/chat?${params.toString()}`)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+    } catch {
+      /* clipboard unavailable (insecure context) */
+    }
+  }
+  return (
+    <button
+      onClick={onShare}
+      title="Copy a link that reruns this exact question + persona for anyone you send it to"
+      className="cursor-pointer rounded bg-neutral-800 px-1.5 py-0.5 text-neutral-300 hover:bg-neutral-700"
+    >
+      {copied ? "✓ link copied" : "🔗 share"}
+    </button>
   );
 }
 
