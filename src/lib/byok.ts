@@ -71,7 +71,11 @@ export function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "anon-ssr";
   let sid = window.localStorage.getItem(SESSION_LS);
   if (!sid) {
-    sid = crypto.randomUUID().slice(0, 16);
+    // Full UUIDv4 (~122 bits). The session id is the only thing guarding one
+    // visitor's session-scoped uploads / audit log from another (the backend
+    // keys them by demo-<session_id>), so it must be hard to guess. The old
+    // 16-char slice was only 64 bits.
+    sid = crypto.randomUUID();
     window.localStorage.setItem(SESSION_LS, sid);
   }
   return sid;

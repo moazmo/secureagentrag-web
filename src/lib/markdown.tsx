@@ -22,6 +22,20 @@ import type { ReactNode } from "react";
 
 const CITATION = /^\[(\d+)\]$/;
 
+/**
+ * Allowlist URL schemes for rendered links. The link text + URL come from the
+ * LLM, which can be prompt-injected. React blocks `javascript:` but NOT
+ * `data:text/html` or `vbscript:` — both are working XSS vectors in `href`.
+ * Only http(s), mailto, and site-relative paths render as links; anything else
+ * falls back to plain text.
+ */
+function isSafeUrl(url: string): boolean {
+  const u = url.trim();
+  if (/^(https?:|mailto:)/i.test(u)) return true;
+  if (/^\/[^/]/.test(u)) return true; // site-relative "/path" (not "//host")
+  return false;
+}
+
 /** Inline scanner: bold, italic, code, links, citation chips. */
 function renderInline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -54,7 +68,7 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
       );
     } else if (tok.startsWith("[") && tok.includes("](")) {
       const mm = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(tok);
-      if (mm) {
+      if (mm && isSafeUrl(mm[2])) {
         out.push(
           <a
             key={key}
@@ -66,6 +80,10 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
             {mm[1]}
           </a>,
         );
+      } else if (mm) {
+        // Unsafe scheme (javascript:/data:/vbscript:/…) — render the visible
+        // link text only, never the clickable href.
+        out.push(mm[1]);
       } else {
         out.push(tok);
       }
