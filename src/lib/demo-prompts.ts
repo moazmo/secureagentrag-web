@@ -72,3 +72,33 @@ export const DEMO_PROMPTS: Record<string, DemoPrompt[]> = {
     },
   ],
 };
+
+/**
+ * Arabic prompts for the "افهم عقدك" (understand-your-contract) flagship. They
+ * hit the bundled illustrative Egyptian corpus (rental contract / labor law /
+ * VAT) — all LOW-sensitivity + broad roles, so every persona retrieves them.
+ * BGE-M3 embeds Arabic, the chunker is Arabic-aware, and the faithfulness
+ * splitter handles Arabic sentence terminators, so answers are cited end-to-end.
+ */
+export const ARABIC_PROMPTS: DemoPrompt[] = [
+  {
+    text: "ما هي مدة الإخطار قبل إنهاء عقد العمل غير محدد المدة؟",
+    hint: "قانون العمل",
+  },
+  {
+    text: "ما هي المدة القصوى لفترة الاختبار للعامل الجديد؟",
+    hint: "قانون العمل",
+  },
+  {
+    text: "متى يلزم التسجيل في ضريبة القيمة المضافة وما عقوبة التأخير؟",
+    hint: "التسجيل الضريبي",
+  },
+  {
+    text: "ما هي أهم التزامات المستأجر في عقد الإيجار السكني؟",
+    hint: "عقد الإيجار",
+  },
+  {
+    text: "كم عدد أيام الإجازة السنوية التي يستحقها العامل؟",
+    hint: "قانون العمل",
+  },
+];

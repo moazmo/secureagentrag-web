@@ -9,7 +9,7 @@ import {
   loadByok,
   saveByok,
 } from "@/lib/byok";
-import { DEMO_PROMPTS } from "@/lib/demo-prompts";
+import { ARABIC_PROMPTS, DEMO_PROMPTS } from "@/lib/demo-prompts";
 import { renderMarkdown } from "@/lib/markdown";
 import { streamSSE } from "@/lib/stream";
 import {
@@ -1081,6 +1081,36 @@ function EmptyState({
           </li>
         ))}
       </ul>
+
+      <div
+        dir="rtl"
+        className="rounded-md border border-emerald-800/40 bg-emerald-950/20 p-4 text-right"
+      >
+        <p className="text-sm font-medium text-emerald-100">
+          افهم عقدك — اسأل بالعربية
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">
+          نفس النظام يجيب بالعربية ويستشهد بالمصدر من مستندات توضيحية مصرية (عقد
+          إيجار، قانون العمل، التسجيل الضريبي). جرّب سؤالًا:
+        </p>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+          {ARABIC_PROMPTS.map((p) => (
+            <li key={p.text}>
+              <button
+                onClick={() => onPick(p.text)}
+                className="w-full rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-3 text-right text-sm text-neutral-200 hover:border-emerald-500/40 hover:bg-neutral-800/60"
+              >
+                <span className="block">{p.text}</span>
+                {p.hint && (
+                  <span className="mt-1 block text-[11px] text-neutral-500">
+                    {p.hint}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -1163,9 +1193,21 @@ function MessageBubble({
           />
         )}
         {isUser ? (
-          <p className="streaming-text whitespace-pre-wrap">{message.text}</p>
+          <p
+            dir={isArabic(message.text) ? "rtl" : undefined}
+            className={`streaming-text whitespace-pre-wrap ${
+              isArabic(message.text) ? "text-right" : ""
+            }`}
+          >
+            {message.text}
+          </p>
         ) : (
-          <div className="streaming-text text-sm leading-relaxed">
+          <div
+            dir={isArabic(message.text) ? "rtl" : undefined}
+            className={`streaming-text text-sm leading-relaxed ${
+              isArabic(message.text) ? "text-right" : ""
+            }`}
+          >
             {renderMarkdown(message.text)}
             {streaming && (
               <span className="sar-soft-pulse ml-0.5 text-neutral-500">▍</span>
@@ -1811,6 +1853,14 @@ function UploadsPanel({
       )}
     </div>
   );
+}
+
+/** Heuristic: is this text predominantly Arabic? Drives RTL rendering. */
+function isArabic(s?: string): boolean {
+  if (!s) return false;
+  const ar = (s.match(/[؀-ۿ]/g) || []).length;
+  const nonSpace = s.replace(/\s/g, "").length || 1;
+  return ar > 0 && ar / nonSpace > 0.2;
 }
 
 function sourceBase(p?: string): string {
