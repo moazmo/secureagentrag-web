@@ -94,6 +94,35 @@ export default function LandingPage() {
         />
       </section>
 
+      <section className="rounded-lg border border-emerald-800/40 bg-emerald-950/20 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-base font-medium text-emerald-100">
+              🇪🇬 افهم عقدك — Arabic-first RAG
+            </p>
+            <p
+              dir="rtl"
+              className="mt-1 max-w-2xl text-right text-xs leading-relaxed text-neutral-300"
+            >
+              اسأل بالعربية عن عقد العمل أو الإيجار أو التسجيل الضريبي، واحصل على
+              إجابة مُستشهَدة بالمصدر من مستندات توضيحية مصرية — مع نفس ضوابط
+              الخصوصية والتحكم في الوصول.
+            </p>
+            <p className="mt-1 max-w-2xl text-xs text-neutral-400">
+              BGE-M3 multilingual embeddings + an Arabic-aware chunker + an
+              Arabic-terminator faithfulness gate mean Arabic questions retrieve,
+              cite, and answer end-to-end — privacy-first, $0.
+            </p>
+          </div>
+          <Link
+            href="/chat"
+            className="shrink-0 rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+          >
+            جرّب بالعربية ←
+          </Link>
+        </div>
+      </section>
+
       <section className="space-y-3">
         <h2 className="text-sm uppercase tracking-wider text-neutral-500">
           How it works
@@ -138,7 +167,8 @@ export default function LandingPage() {
         >
           <span className="block text-base font-medium">📚 Corpus browser</span>
           <span className="mt-1 block text-xs text-neutral-400">
-            See the 10 demo docs: filename · sensitivity · roles · chunk counts.
+            See the 14 demo docs (incl. Arabic): filename · sensitivity · roles ·
+            chunk counts.
           </span>
         </Link>
         <Link
@@ -166,9 +196,9 @@ export default function LandingPage() {
           By the numbers
         </h2>
         <div className="grid gap-3 sm:grid-cols-4">
-          <Stat label="tests passing" value="620" />
-          <Stat label="ADRs" value="30" />
-          <Stat label="Python LOC" value="33.8k" />
+          <Stat label="tests passing" value="704" />
+          <Stat label="ADRs" value="39" />
+          <Stat label="Python LOC" value="36k" />
           <Stat label="monthly cost" value="$0" />
         </div>
       </section>
