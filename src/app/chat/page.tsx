@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ByokState,
@@ -75,6 +76,9 @@ interface AssistantMeta {
   // "Share" button can rebuild a deep link that reproduces it.
   query?: string;
   persona?: Persona;
+  // Visitor's thumbs rating on this answer (optimistic; persisted to the audit
+  // chain via /api/feedback).
+  rated?: "up" | "down";
 }
 
 interface ChatMessage {
@@ -187,6 +191,28 @@ export default function ChatPage() {
   // A shared answer link arrives as /chat?persona=…&q=… — auto-run it once the
   // session is ready so a recruiter who opens the link sees the answer rebuild.
   const [pendingShared, setPendingShared] = useState<string | null>(null);
+
+  // One-time guided tour that proves the four hero stories in ~60s. Shown until
+  // dismissed (localStorage), and never shown when arriving via a share link.
+  const [showTour, setShowTour] = useState(false);
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (!sp.get("q") && !window.localStorage.getItem("sar:tour-done")) {
+        setShowTour(true);
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, []);
+  function dismissTour() {
+    setShowTour(false);
+    try {
+      window.localStorage.setItem("sar:tour-done", "1");
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     setByok(loadByok());
@@ -516,6 +542,37 @@ export default function ChatPage() {
     }
   }
 
+  // Record a thumbs rating on an answer. Optimistic UI; the rating lands on the
+  // backend audit hash chain via the Edge proxy. Best-effort — a failed POST
+  // just leaves the optimistic state (the demo never blocks on feedback).
+  const rateMessage = useCallback(
+    (idx: number, rating: "up" | "down") => {
+      let query = "";
+      let answer = "";
+      setMessages((m) => {
+        const cp = [...m];
+        const cur = cp[idx];
+        if (!cur || cur.role !== "assistant") return m;
+        query = cur.meta?.query || "";
+        answer = cur.text || "";
+        cp[idx] = { ...cur, meta: { ...(cur.meta || {}), rated: rating } };
+        return cp;
+      });
+      void fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating,
+          query,
+          answerSummary: answer.slice(0, 200),
+          sessionId,
+          persona,
+        }),
+      }).catch(() => {});
+    },
+    [sessionId, persona],
+  );
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -740,6 +797,18 @@ export default function ChatPage() {
         </div>
       )}
 
+      {showTour && (
+        <TourCard
+          onRun={(q) => {
+            dismissTour();
+            void send(q);
+          }}
+          onOpenAudit={() => setAuditOpen(true)}
+          onOpenDocs={() => setKbOpen(true)}
+          onDismiss={dismissTour}
+        />
+      )}
+
       {drawerOpen && (
         <ByokDrawer
           current={byok}
@@ -814,6 +883,7 @@ export default function ChatPage() {
                   : null
               }
               onFollowUp={(text) => send(text)}
+              onRate={(r) => rateMessage(i, r)}
             />
           );
         })}
@@ -839,6 +909,101 @@ export default function ChatPage() {
         </button>
       </footer>
     </main>
+  );
+}
+
+function TourCard({
+  onRun,
+  onOpenAudit,
+  onOpenDocs,
+  onDismiss,
+}: {
+  onRun: (q: string) => void;
+  onOpenAudit: () => void;
+  onOpenDocs: () => void;
+  onDismiss: () => void;
+}) {
+  const btn =
+    "rounded border border-blue-700/50 bg-blue-900/20 px-2.5 py-1 text-[11px] text-blue-200 hover:border-blue-500 hover:bg-blue-900/40";
+  const steps: { n: number; title: string; body: string; action: ReactNode }[] = [
+    {
+      n: 1,
+      title: "RBAC at the vector layer",
+      body: "Switch persona and the same question returns different documents — chunks you are not cleared for are never retrieved, not merely hidden.",
+      action: (
+        <button onClick={onOpenDocs} className={btn}>
+          📚 See what each persona can read
+        </button>
+      ),
+    },
+    {
+      n: 2,
+      title: "Sensitivity-based routing",
+      body: "Ask something sensitive and watch the sensitivity: badge. HIGH content pins to local inference when self-hosted; this hosted demo labels cloud routing.",
+      action: (
+        <button
+          onClick={() => onRun("What is the employee salary and compensation policy?")}
+          className={btn}
+        >
+          🔐 Ask a sensitive question
+        </button>
+      ),
+    },
+    {
+      n: 3,
+      title: "NLI faithfulness gate",
+      body: "Every answer carries a faith % — a per-sentence entailment check against the cited chunk. Most RAG demos stop at 'it cited something'.",
+      action: (
+        <button
+          onClick={() => onRun("What is the NIST AI RMF and what are its core functions?")}
+          className={btn}
+        >
+          ✅ Run a grounded answer
+        </button>
+      ),
+    },
+    {
+      n: 4,
+      title: "Tamper-evident audit chain",
+      body: "Every turn lands in a SHA-256 hash chain you can export as JSONL — edit one row and verification fails.",
+      action: (
+        <button onClick={onOpenAudit} className={btn}>
+          📜 Open the audit trail
+        </button>
+      ),
+    },
+  ];
+  return (
+    <div className="rounded-md border border-blue-800/40 bg-blue-950/20 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-medium text-blue-100">
+          How this demo works — a 60-second tour
+        </p>
+        <button
+          onClick={onDismiss}
+          className="rounded border border-neutral-700 px-2 py-0.5 text-[11px] text-neutral-400 hover:border-neutral-500 hover:text-neutral-200"
+        >
+          skip
+        </button>
+      </div>
+      <ol className="grid gap-2 sm:grid-cols-2">
+        {steps.map((s) => (
+          <li
+            key={s.n}
+            className="flex flex-col gap-1.5 rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-2.5"
+          >
+            <p className="text-xs font-medium text-[color:var(--foreground)]">
+              <span className="mr-1.5 rounded bg-blue-500/20 px-1.5 py-0.5 text-blue-200">
+                {s.n}
+              </span>
+              {s.title}
+            </p>
+            <p className="text-[11px] leading-relaxed text-neutral-400">{s.body}</p>
+            <div>{s.action}</div>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -961,11 +1126,13 @@ function MessageBubble({
   streaming,
   followUps,
   onFollowUp,
+  onRate,
 }: {
   message: ChatMessage;
   streaming: boolean;
   followUps?: string[] | null;
   onFollowUp?: (text: string) => void;
+  onRate?: (rating: "up" | "down") => void;
 }) {
   const isUser = message.role === "user";
   const meta = message.meta;
@@ -1093,6 +1260,32 @@ function MessageBubble({
             )}
             {meta.query && !meta.blocked && (
               <ShareButton query={meta.query} persona={meta.persona} />
+            )}
+            {onRate && !meta.blocked && (
+              <span className="flex gap-1">
+                <button
+                  onClick={() => onRate("up")}
+                  title="Helpful — recorded on the audit chain"
+                  className={`cursor-pointer rounded px-1.5 py-0.5 ${
+                    meta.rated === "up"
+                      ? "bg-emerald-900/50 text-emerald-200"
+                      : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  👍
+                </button>
+                <button
+                  onClick={() => onRate("down")}
+                  title="Not helpful — recorded on the audit chain"
+                  className={`cursor-pointer rounded px-1.5 py-0.5 ${
+                    meta.rated === "down"
+                      ? "bg-red-900/50 text-red-200"
+                      : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  👎
+                </button>
+              </span>
             )}
           </div>
         )}
