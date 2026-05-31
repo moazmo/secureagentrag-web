@@ -84,9 +84,32 @@ const INITIAL: Check[] = [
   },
 ];
 
+interface EvalStats {
+  queries_answered?: number;
+  docs_grounded?: number;
+  eval?: {
+    faithfulness?: number | null;
+    context_precision?: number | null;
+    answer_relevancy?: number | null;
+  };
+}
+
 export default function StatusPage() {
   const [checks, setChecks] = useState<Check[]>(INITIAL);
   const [lastTick, setLastTick] = useState<string>("");
+  const [stats, setStats] = useState<EvalStats | null>(null);
+
+  // Pull the durable eval baseline + live activity once (best-effort).
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/stats", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("bad"))))
+      .then((d: EvalStats) => alive && setStats(d))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let stopped = false;
@@ -182,6 +205,10 @@ export default function StatusPage() {
         ))}
       </section>
 
+      <EvalSection stats={stats} />
+
+      <HonestyTable />
+
       <footer className="text-xs text-neutral-500">
         Last tick: <span className="font-mono">{lastTick || "(initial)"}</span>.
         Polls run client-side — no metrics are stored.
@@ -245,6 +272,137 @@ function SummaryBanner({
     <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-4 py-3 text-sm text-neutral-300">
       <p>Probing…</p>
     </div>
+  );
+}
+
+function EvalSection({ stats }: { stats: EvalStats | null }) {
+  const pct = (v: number | null | undefined) =>
+    typeof v === "number" && !Number.isNaN(v) ? `${Math.round(v * 100)}%` : "—";
+  const e = stats?.eval;
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm uppercase tracking-wider text-neutral-500">
+        Answer quality (nightly Ragas eval)
+      </h2>
+      <div className="rounded-md border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+        <div className="flex flex-wrap gap-5">
+          <Metric label="context precision" value={pct(e?.context_precision)} />
+          <Metric label="faithfulness" value={pct(e?.faithfulness)} />
+          <Metric label="answer relevancy" value={pct(e?.answer_relevancy)} />
+        </div>
+        <p className="mt-2 text-[11px] text-neutral-500">
+          The committed baseline from the labelled golden set — proof, not
+          claims. Live demo activity since the Space last woke:{" "}
+          <span className="text-neutral-300">
+            {(stats?.queries_answered ?? 0).toLocaleString()}
+          </span>{" "}
+          questions answered ·{" "}
+          <span className="text-neutral-300">
+            {(stats?.docs_grounded ?? 0).toLocaleString()}
+          </span>{" "}
+          documents grounded.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xl font-semibold text-[color:var(--foreground)]">
+        {value}
+      </p>
+      <p className="text-[10px] uppercase tracking-wider text-neutral-500">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * A3 — honesty table. Spells out exactly what the hosted $0 demo does
+ * differently from a self-hosted deploy, so the one real gotcha (HIGH routed
+ * to cloud because the Space has no Ollama) is a credibility signal, not a
+ * surprise a sharp reviewer catches.
+ */
+function HonestyTable() {
+  const rows: { feature: string; demo: string; self: string }[] = [
+    {
+      feature: "HIGH-sensitivity routing",
+      demo: "Cloud (Groq) — labelled with a sensitivity badge",
+      self: "Local Ollama only — never leaves the host",
+    },
+    {
+      feature: "NLI faithfulness gate",
+      demo: "Off (Groq RPM budget)",
+      self: "On — per-sentence entailment",
+    },
+    {
+      feature: "LLM-as-judge grader / evaluator",
+      demo: "Bypassed (cost)",
+      self: "On",
+    },
+    {
+      feature: "Guardrails escalation",
+      demo: "Regex only",
+      self: "Regex → LlamaGuard (S1–S14)",
+    },
+    {
+      feature: "Owner-key throttle",
+      demo: "10 req/IP/hour (BYOK unlocks)",
+      self: "N/A — your own keys",
+    },
+    {
+      feature: "Uploads + audit",
+      demo: "Session-scoped, 24h purge, /tmp audit",
+      self: "Durable, your infra",
+    },
+  ];
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm uppercase tracking-wider text-neutral-500">
+        This hosted demo vs self-hosted
+      </h2>
+      <div className="overflow-x-auto rounded-md border border-[color:var(--border-soft)]">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-[color:var(--surface)] text-neutral-400">
+            <tr>
+              <th className="p-2 font-medium">Feature</th>
+              <th className="p-2 font-medium">Hosted $0 demo</th>
+              <th className="p-2 font-medium">Self-hosted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.feature}
+                className="border-t border-[color:var(--border-soft)]"
+              >
+                <td className="p-2 font-medium text-[color:var(--foreground)]">
+                  {r.feature}
+                </td>
+                <td className="p-2 text-amber-200/90">{r.demo}</td>
+                <td className="p-2 text-emerald-200/90">{r.self}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[11px] text-neutral-500">
+        Everything off in the demo is a cost/latency choice on the free tier,
+        not a missing capability — see{" "}
+        <a
+          href="https://github.com/moazmo/secureagentrag/blob/main/docs/BYOK_PRIVACY_TRADEOFFS.md"
+          target="_blank"
+          rel="noopener"
+          className="underline decoration-dotted hover:text-neutral-300"
+        >
+          BYOK_PRIVACY_TRADEOFFS.md
+        </a>
+        .
+      </p>
+    </section>
   );
 }
 

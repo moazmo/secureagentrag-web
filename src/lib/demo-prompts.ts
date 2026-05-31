@@ -101,4 +101,53 @@ export const ARABIC_PROMPTS: DemoPrompt[] = [
     text: "كم عدد أيام الإجازة السنوية التي يستحقها العامل؟",
     hint: "قانون العمل",
   },
+  {
+    text: "هل يحق لي استرجاع منتج معيب وما هي شروط ذلك؟",
+    hint: "حماية المستهلك",
+  },
+  {
+    text: "كيف تُحسب ضريبة الدخل على العمل الحر وما المصروفات التي يمكن خصمها؟",
+    hint: "ضرائب العمل الحر",
+  },
+  {
+    text: "ما شروط استحقاق معاش الشيخوخة في التأمينات الاجتماعية؟",
+    hint: "التأمينات الاجتماعية",
+  },
+  {
+    text: "هل يجوز للمؤجر إخلائي بالقوة أو قطع المرافق عند الخلاف؟",
+    hint: "حقوق المستأجر",
+  },
 ];
+
+/**
+ * One-line "what to ask about this file" hint per demo-corpus document, keyed
+ * by source filename. Surfaced on the /corpus page and the chat empty state so
+ * a cold visitor always has a working first question for any document. Pure
+ * editorial content — no backend round-trip.
+ */
+export const CORPUS_HINTS: Record<string, string> = {
+  "demo_public_handbook.txt": "Ask about company values or the code of conduct.",
+  "demo_engineering_runbook.txt":
+    "Ask how to deploy or roll back a service (engineering personas only).",
+  "demo_finance_q3.txt":
+    "Ask about Q3 revenue or margin — HIGH-sensitivity, compliance/executive only.",
+  "demo_security_policy.txt": "Ask what MFA or encryption controls are mandated.",
+  "demo_incident_runbook.txt":
+    "Ask for the rollback procedure for checkout-service.",
+  "demo_ml_model_card.txt":
+    "Ask about fraud-detector-v7's limitations or p99 latency.",
+  "demo_infra_adr.txt": "Ask why we migrated from Ingress to the Gateway API.",
+  "demo_hr_handbook.txt": "Ask about leave policy or remote-work rules.",
+  "demo_vendor_contract.txt":
+    "Ask about Summitline's data-protection obligation — compliance/legal only.",
+  "NIST_AI_RMF.pdf": "Ask what the four NIST AI RMF functions are.",
+  // Arabic flagship corpus (اسأل بالعربية).
+  "eg_rental_contract.txt": "اسأل عن التزامات المستأجر أو قيمة التأمين.",
+  "eg_labor_law.txt": "اسأل عن مدة الإخطار أو أيام الإجازة السنوية.",
+  "eg_vat_tax.txt": "اسأل متى يلزم التسجيل في ضريبة القيمة المضافة.",
+  "eg_employee_handbook.txt": "اسأل عن سياسة العمل عن بُعد أو الإجازات.",
+  "eg_tenant_rights.txt": "اسأل هل يجوز للمؤجر إخلاؤك بالقوة عند الخلاف.",
+  "eg_consumer_protection.txt": "اسأل عن شروط استرجاع منتج معيب.",
+  "eg_freelance_tax.txt": "اسأل كيف تُحسب ضريبة الدخل على العمل الحر.",
+  "eg_social_insurance.txt": "اسأل عن شروط استحقاق معاش الشيخوخة.",
+};

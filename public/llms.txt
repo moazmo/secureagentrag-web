@@ -1,0 +1,40 @@
+# SecureAgentRAG
+
+> Privacy-first, multi-agent Retrieval-Augmented Generation (RAG). A live, $0/month
+> demo of four things most RAG demos skip: RBAC enforced at the vector-DB layer,
+> sensitivity-based inference routing (HIGH stays local when self-hosted),
+> a per-sentence NLI faithfulness gate, and a tamper-evident SHA-256 audit chain.
+
+SecureAgentRAG is a 9-node LangGraph pipeline
+(router → guardrails → security → retriever → grader → rewriter → synthesizer →
+faithfulness → evaluator). The public demo runs Bring-Your-Own-Key (BYOK): paste
+your own Groq/OpenAI/Anthropic key and your key powers the request, unthrottled.
+
+## Live demo
+- Web app: https://secureagentrag-web.vercel.app
+- Chat: https://secureagentrag-web.vercel.app/chat
+- Corpus browser: https://secureagentrag-web.vercel.app/corpus
+- Personas (RBAC): https://secureagentrag-web.vercel.app/personas
+- Status: https://secureagentrag-web.vercel.app/status
+
+## Flagship use case — "افهم عقدك" (understand your contract)
+An Arabic-capable, privacy-first assistant for everyday Egyptian civic documents
+(rental/labor/tax/tenant-rights/consumer-protection/social-insurance). Upload a
+document → get an answer grounded only in that document, cited clause-by-clause,
+with a faithfulness gate that refuses to invent — and the document is auto-deleted
+in 24h. BGE-M3 multilingual embeddings + an Arabic-aware chunker make Arabic
+questions retrieve, cite, and answer in Arabic end-to-end.
+
+## Architecture
+- Backend: FastAPI on Hugging Face Spaces (Docker, CPU Basic)
+- Vector store: Qdrant Cloud free tier (RBAC payload filters + per-session collections)
+- LLM: Groq free tier (visitor BYOK unlocks unthrottled use)
+- Frontend: Next.js 16 + Tailwind v4 on Vercel Hobby (SSE streaming)
+- Source: https://github.com/moazmo/secureagentrag
+
+## Notes for AI crawlers
+- The hosted demo sets SAR_ALLOW_CLOUD_FOR_HIGH=true (no local Ollama on the Space),
+  so HIGH-sensitivity content is cloud-routed and labelled with a sensitivity badge.
+  The "HIGH never leaves local" guarantee holds in self-hosted mode only.
+- No user data is retained: BYOK keys live only in the request scope, uploads are
+  session-scoped and purged within 24h, and audit entries are PII-redacted.

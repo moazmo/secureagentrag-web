@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import LiveStats from "@/components/LiveStats";
+
 /**
  * Static landing page.
  *
@@ -49,10 +51,16 @@ export default function LandingPage() {
         </p>
         <div className="flex flex-wrap gap-3 pt-2">
           <Link
-            href="/chat"
+            href="/chat?upload=1"
             className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
           >
-            🚀 Try the demo
+            📄 Upload a doc, get a cited answer
+          </Link>
+          <Link
+            href="/chat"
+            className="rounded border border-[color:var(--border-soft)] px-4 py-2 text-sm text-neutral-200 hover:border-neutral-500"
+          >
+            🚀 Try the demo corpus
           </Link>
           <a
             href="https://github.com/moazmo/secureagentrag"
@@ -69,6 +77,14 @@ export default function LandingPage() {
             📊 Live status
           </Link>
         </div>
+        <p className="text-xs text-neutral-500">
+          Your document never mixes with anyone else&apos;s — it lands in a
+          private, session-scoped vector collection and is auto-deleted within
+          24h.{" "}
+          <Link href="/status" className="text-neutral-400 underline hover:text-blue-400">
+            ⓘ what this hosted demo does vs self-hosted
+          </Link>
+        </p>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2">
@@ -167,8 +183,8 @@ export default function LandingPage() {
         >
           <span className="block text-base font-medium">📚 Corpus browser</span>
           <span className="mt-1 block text-xs text-neutral-400">
-            See the 14 demo docs (incl. Arabic): filename · sensitivity · roles ·
-            chunk counts.
+            See the 18 demo docs (incl. 8 Arabic): filename · sensitivity ·
+            roles · chunk counts.
           </span>
         </Link>
         <Link
@@ -191,15 +207,45 @@ export default function LandingPage() {
         </Link>
       </section>
 
+      <LiveStats />
+
       <section className="space-y-3">
         <h2 className="text-sm uppercase tracking-wider text-neutral-500">
           By the numbers
         </h2>
         <div className="grid gap-3 sm:grid-cols-4">
-          <Stat label="tests passing" value="704" />
-          <Stat label="ADRs" value="39" />
+          <Stat label="tests passing" value="706" />
+          <Stat label="ADRs" value="40" />
           <Stat label="Python LOC" value="36k" />
           <Stat label="monthly cost" value="$0" />
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5">
+        <p className="text-sm font-medium text-[color:var(--foreground)]">
+          🛠️ Run your own copy
+        </p>
+        <p className="mt-1 text-xs text-neutral-400">
+          The whole stack is forkable and $0. Duplicate the Space, deploy the
+          frontend, point it at your own Qdrant + Groq keys.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <a
+            href="https://huggingface.co/spaces/LeomordKaly/secureagentrag-api?duplicate=true"
+            target="_blank"
+            rel="noopener"
+            className="rounded border border-[color:var(--border-soft)] px-3 py-1.5 text-xs text-neutral-200 hover:border-neutral-500"
+          >
+            🤗 Duplicate the Space
+          </a>
+          <a
+            href="https://vercel.com/new/clone?repository-url=https://github.com/moazmo/secureagentrag-web"
+            target="_blank"
+            rel="noopener"
+            className="rounded border border-[color:var(--border-soft)] px-3 py-1.5 text-xs text-neutral-200 hover:border-neutral-500"
+          >
+            ▲ Deploy frontend to Vercel
+          </a>
         </div>
       </section>
 

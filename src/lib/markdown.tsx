@@ -36,8 +36,23 @@ function isSafeUrl(url: string): boolean {
   return false;
 }
 
+/** Options threaded through the renderer. */
+export interface MarkdownOptions {
+  /**
+   * When set, `[N]` citation markers render as clickable buttons that call
+   * `onCite(N)` — the chat page uses this to scroll to + flash the matching
+   * citation in the source panel. Without it, citations render as inert
+   * superscripts (the default everywhere else).
+   */
+  onCite?: (n: number) => void;
+}
+
 /** Inline scanner: bold, italic, code, links, citation chips. */
-function renderInline(text: string, keyBase: string): ReactNode[] {
+function renderInline(
+  text: string,
+  keyBase: string,
+  opts?: MarkdownOptions,
+): ReactNode[] {
   const out: ReactNode[] = [];
   // Ordered alternation. `exec` with the global flag walks left to right;
   // the alternation picks whichever token starts at the current scan
@@ -89,15 +104,30 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
       }
     } else if (CITATION.test(tok)) {
       const n = CITATION.exec(tok)![1];
-      out.push(
-        <sup
-          key={key}
-          className="mx-0.5 rounded bg-blue-500/20 px-1 text-[0.7em] font-medium text-blue-300"
-          title={`Citation ${n} — see the citations panel below`}
-        >
-          {n}
-        </sup>,
-      );
+      if (opts?.onCite) {
+        const num = Number(n);
+        out.push(
+          <button
+            key={key}
+            type="button"
+            onClick={() => opts.onCite!(num)}
+            className="mx-0.5 cursor-pointer rounded bg-blue-500/20 px-1 align-super text-[0.7em] font-medium text-blue-300 hover:bg-blue-500/40 hover:text-blue-100"
+            title={`Jump to citation ${n} in the source panel`}
+          >
+            {n}
+          </button>,
+        );
+      } else {
+        out.push(
+          <sup
+            key={key}
+            className="mx-0.5 rounded bg-blue-500/20 px-1 text-[0.7em] font-medium text-blue-300"
+            title={`Citation ${n} — see the citations panel below`}
+          >
+            {n}
+          </sup>,
+        );
+      }
     } else if (tok.startsWith("*") || tok.startsWith("_")) {
       out.push(
         <em key={key} className="italic">
@@ -114,7 +144,7 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
 }
 
 /** Block-level parser: headings, lists, code fences, paragraphs. */
-export function renderMarkdown(src: string): ReactNode {
+export function renderMarkdown(src: string, opts?: MarkdownOptions): ReactNode {
   if (!src) return null;
   const lines = src.replace(/\r\n/g, "\n").split("\n");
   const blocks: ReactNode[] = [];
@@ -157,7 +187,7 @@ export function renderMarkdown(src: string): ReactNode {
           key={`b${key++}`}
           className={`mt-3 mb-1 font-semibold ${sizes[level - 1]} text-[color:var(--foreground)]`}
         >
-          {renderInline(h[2], `h${key}`)}
+          {renderInline(h[2], `h${key}`, opts)}
         </p>,
       );
       i++;
@@ -174,7 +204,7 @@ export function renderMarkdown(src: string): ReactNode {
       blocks.push(
         <ul key={`b${key++}`} className="my-2 list-disc space-y-1 pl-5">
           {items.map((it, j) => (
-            <li key={j}>{renderInline(it, `ul${key}-${j}`)}</li>
+            <li key={j}>{renderInline(it, `ul${key}-${j}`, opts)}</li>
           ))}
         </ul>,
       );
@@ -191,7 +221,7 @@ export function renderMarkdown(src: string): ReactNode {
       blocks.push(
         <ol key={`b${key++}`} className="my-2 list-decimal space-y-1 pl-5">
           {items.map((it, j) => (
-            <li key={j}>{renderInline(it, `ol${key}-${j}`)}</li>
+            <li key={j}>{renderInline(it, `ol${key}-${j}`, opts)}</li>
           ))}
         </ol>,
       );
@@ -219,7 +249,7 @@ export function renderMarkdown(src: string): ReactNode {
     }
     blocks.push(
       <p key={`b${key++}`} className="my-1.5 whitespace-pre-wrap">
-        {renderInline(para.join("\n"), `p${key}`)}
+        {renderInline(para.join("\n"), `p${key}`, opts)}
       </p>,
     );
   }

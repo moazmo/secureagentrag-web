@@ -9,7 +9,7 @@ import {
   loadByok,
   saveByok,
 } from "@/lib/byok";
-import { ARABIC_PROMPTS, DEMO_PROMPTS } from "@/lib/demo-prompts";
+import { ARABIC_PROMPTS, CORPUS_HINTS, DEMO_PROMPTS } from "@/lib/demo-prompts";
 import { renderMarkdown } from "@/lib/markdown";
 import { streamSSE } from "@/lib/stream";
 import {
@@ -223,6 +223,9 @@ export default function ChatPage() {
       const q = sp.get("q");
       if (p && PERSONAS.some((x) => x.value === p)) setPersona(p as Persona);
       if (q && q.trim()) setPendingShared(q.trim());
+      // Landing's "Upload a doc" CTA deep-links here with ?upload=1 so the
+      // upload panel is open on arrival (the upload-led front door, B2).
+      if (sp.get("upload")) setUploadsOpen(true);
     } catch {
       /* no query string */
     }
@@ -833,10 +836,23 @@ export default function ChatPage() {
           onDelete={handleDeleteUpload}
           onRefresh={refreshUploads}
           onDismissError={() => setUploadError(null)}
+          onAnalyze={(name) => {
+            setUploadsOpen(false);
+            void send(clauseByClauseQuery(name));
+          }}
         />
       )}
 
-      {kbOpen && <KnowledgeBasePanel corpus={corpus} persona={persona} />}
+      {kbOpen && (
+        <KnowledgeBasePanel
+          corpus={corpus}
+          persona={persona}
+          onAsk={(t) => {
+            setKbOpen(false);
+            void send(t);
+          }}
+        />
+      )}
 
       {auditOpen && <AuditPanel items={audit} onRefresh={refreshAudit} />}
 
@@ -1166,6 +1182,27 @@ function MessageBubble({
 }) {
   const isUser = message.role === "user";
   const meta = message.meta;
+  // A1: clicking a [N] chip in the answer scrolls to + flashes citation N in
+  // the source panel below. handleCite only sets state; the ref-driven scroll +
+  // <details> open happen in the effect (refs must not be read during render).
+  const [activeCite, setActiveCite] = useState<number | null>(null);
+  const citesRef = useRef<HTMLDivElement | null>(null);
+  const hasCites = !!(meta?.citations && meta.citations.length > 0);
+  const handleCite = useCallback((n: number) => setActiveCite(n), []);
+  useEffect(() => {
+    if (activeCite == null) return;
+    const root = citesRef.current;
+    if (root) {
+      const details = root.querySelector("details") as HTMLDetailsElement | null;
+      if (details && !details.open) details.open = true;
+      const el = root.querySelector(
+        `[data-cite="${activeCite}"]`,
+      ) as HTMLElement | null;
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    const t = window.setTimeout(() => setActiveCite(null), 1600);
+    return () => window.clearTimeout(t);
+  }, [activeCite]);
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
@@ -1208,14 +1245,21 @@ function MessageBubble({
               isArabic(message.text) ? "text-right" : ""
             }`}
           >
-            {renderMarkdown(message.text)}
+            {renderMarkdown(
+              message.text,
+              hasCites ? { onCite: handleCite } : undefined,
+            )}
             {streaming && (
               <span className="sar-soft-pulse ml-0.5 text-neutral-500">▍</span>
             )}
           </div>
         )}
-        {!isUser && meta?.citations && meta.citations.length > 0 && (
-          <CitationsPanel citations={meta.citations} />
+        {!isUser && hasCites && (
+          <CitationsPanel
+            citations={meta!.citations!}
+            rootRef={citesRef}
+            activeIndex={activeCite}
+          />
         )}
         {!isUser && followUps && followUps.length > 0 && onFollowUp && (
           <FollowUpStrip suggestions={followUps} onPick={onFollowUp} />
@@ -1394,18 +1438,35 @@ function RbacDenied({ seen, used }: { seen: number; used: number }) {
   );
 }
 
-function CitationsPanel({ citations }: { citations: Citation[] }) {
+function CitationsPanel({
+  citations,
+  rootRef,
+  activeIndex,
+}: {
+  citations: Citation[];
+  rootRef?: React.RefObject<HTMLDivElement | null>;
+  activeIndex?: number | null;
+}) {
   return (
-    <details className="mt-3 rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)]/60 p-2 text-[11px] text-neutral-300">
-      <summary className="cursor-pointer text-neutral-300">
-        📚 {citations.length} citation{citations.length === 1 ? "" : "s"}
-      </summary>
-      <ul className="mt-2 space-y-2">
-        {citations.map((c, i) => (
-          <li
-            key={i}
-            className="rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)]/40 p-2"
-          >
+    <div ref={rootRef}>
+      <details className="mt-3 rounded border border-[color:var(--border-soft)] bg-[color:var(--surface)]/60 p-2 text-[11px] text-neutral-300">
+        <summary className="cursor-pointer text-neutral-300">
+          📚 {citations.length} citation{citations.length === 1 ? "" : "s"}
+          <span className="ml-1 text-[10px] text-neutral-500">
+            — click a [n] in the answer to jump here
+          </span>
+        </summary>
+        <ul className="mt-2 space-y-2">
+          {citations.map((c, i) => (
+            <li
+              key={i}
+              data-cite={i + 1}
+              className={`rounded border bg-[color:var(--surface)]/40 p-2 transition ${
+                activeIndex === i + 1
+                  ? "border-blue-500 ring-1 ring-blue-500/60"
+                  : "border-[color:var(--border-soft)]"
+              }`}
+            >
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-neutral-400">
               <span className="rounded bg-neutral-800 px-1.5 py-0.5">
                 [{i + 1}]
@@ -1427,10 +1488,11 @@ function CitationsPanel({ citations }: { citations: Citation[] }) {
                 {c.chunk_text}
               </p>
             )}
-          </li>
-        ))}
-      </ul>
-    </details>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
   );
 }
 
@@ -1518,9 +1580,11 @@ function Badge({
 function KnowledgeBasePanel({
   corpus,
   persona,
+  onAsk,
 }: {
   corpus: CorpusDoc[] | null;
   persona: Persona;
+  onAsk?: (text: string) => void;
 }) {
   if (corpus === null) {
     return (
@@ -1578,6 +1642,16 @@ function KnowledgeBasePanel({
                   </span>
                 ))}
               </span>
+              {ok && onAsk && CORPUS_HINTS[d.source_file] && (
+                <button
+                  onClick={() => onAsk(CORPUS_HINTS[d.source_file])}
+                  dir={isArabic(CORPUS_HINTS[d.source_file]) ? "rtl" : undefined}
+                  className="basis-full text-left text-[10px] text-blue-300/80 hover:text-blue-200"
+                  title="Ask this question about this document"
+                >
+                  💬 {CORPUS_HINTS[d.source_file]}
+                </button>
+              )}
             </li>
           );
         })}
@@ -1706,6 +1780,7 @@ function UploadsPanel({
   onDelete,
   onRefresh,
   onDismissError,
+  onAnalyze,
 }: {
   uploads: UploadsList | null;
   busy: boolean;
@@ -1714,6 +1789,7 @@ function UploadsPanel({
   onDelete: (item: UploadItem) => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
   onDismissError: () => void;
+  onAnalyze?: (filename: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -1840,9 +1916,18 @@ function UploadsPanel({
               <span className="font-mono text-neutral-300">📄</span>
               <span className="truncate text-neutral-200">{item.filename}</span>
               <span className="text-neutral-500">· {item.chunks} chunk{item.chunks === 1 ? "" : "s"}</span>
+              {onAnalyze && (
+                <button
+                  onClick={() => onAnalyze(item.filename)}
+                  className="ml-auto rounded border border-blue-800/60 bg-blue-900/20 px-2 py-0.5 text-[10px] text-blue-200 hover:border-blue-500"
+                  title="Walk this document clause by clause — grounded + cited, in its own language"
+                >
+                  📋 Explain clause-by-clause
+                </button>
+              )}
               <button
                 onClick={() => void onDelete(item)}
-                className="ml-auto rounded border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-300 hover:border-red-500 hover:text-red-300"
+                className={`rounded border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-300 hover:border-red-500 hover:text-red-300 ${onAnalyze ? "" : "ml-auto"}`}
                 title="Drop all chunks for this upload"
               >
                 delete
@@ -1852,6 +1937,23 @@ function UploadsPanel({
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * B3 — clause-by-clause contract mode. Builds a structured prompt that asks the
+ * model to walk an uploaded document section by section, grounded + cited, and
+ * answer in the document's own language (so an Arabic contract gets an Arabic
+ * breakdown). Pure prompt templating — no backend change, $0.
+ */
+function clauseByClauseQuery(filename: string): string {
+  return (
+    `Walk through the uploaded document "${filename}" clause by clause. ` +
+    `For each important clause or section: quote or reference it, explain in ` +
+    `plain language what it means and what to watch out for, and ground every ` +
+    `point in the document text with a [n] citation. If a detail is not in the ` +
+    `document, say so explicitly rather than guessing. Answer in the same ` +
+    `language as the document (إن كان المستند بالعربية فأجب بالعربية).`
   );
 }
 
