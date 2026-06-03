@@ -56,6 +56,7 @@ export default function LiveStats() {
   const cp = pct(stats.eval?.context_precision);
   const fa = pct(stats.eval?.faithfulness);
   const ar = pct(stats.eval?.answer_relevancy);
+  const hasEval = !!(cp || fa || ar);
   const queries = stats.queries_answered ?? 0;
   const docs = stats.docs_grounded ?? 0;
 
@@ -64,20 +65,22 @@ export default function LiveStats() {
       <h2 className="text-sm uppercase tracking-wider text-neutral-500">
         Live proof
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
-          <p className="text-xs uppercase tracking-wider text-neutral-500">
-            Nightly Ragas eval (committed baseline)
-          </p>
-          <div className="mt-2 flex flex-wrap gap-4">
-            {cp && <Metric label="context precision" value={cp} />}
-            {fa && <Metric label="faithfulness" value={fa} />}
-            {ar && <Metric label="answer relevancy" value={ar} />}
+      <div className={`grid gap-3 ${hasEval ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+        {hasEval && (
+          <div className="rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
+            <p className="text-xs uppercase tracking-wider text-neutral-500">
+              Nightly Ragas eval (committed baseline)
+            </p>
+            <div className="mt-2 flex flex-wrap gap-4">
+              {cp && <Metric label="context precision" value={cp} />}
+              {fa && <Metric label="faithfulness" value={fa} />}
+              {ar && <Metric label="answer relevancy" value={ar} />}
+            </div>
+            <p className="mt-2 text-[11px] text-neutral-500">
+              Measured against the labelled golden set — proof, not claims.
+            </p>
           </div>
-          <p className="mt-2 text-[11px] text-neutral-500">
-            Measured against the labelled golden set — proof, not claims.
-          </p>
-        </div>
+        )}
         <div className="rounded-lg border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
           <p className="text-xs uppercase tracking-wider text-neutral-500">
             Demo activity (since the Space last woke)

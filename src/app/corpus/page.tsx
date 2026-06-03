@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CORPUS_HINTS } from "@/lib/demo-prompts";
 
 /**
  * Public corpus browser.
@@ -62,7 +63,8 @@ export default async function CorpusPage() {
           </h1>
         </div>
         <p className="max-w-2xl text-sm text-neutral-400">
-          These are the 10 hand-curated documents ingested into the Qdrant
+          {"error" in data ? "These are the" : `These are the ${data.count}`}{" "}
+          demo documents (English RBAC + Arabic Egypt) ingested into the Qdrant
           Cloud free-tier collection used by every visitor on this demo. RBAC
           is enforced at the Qdrant payload layer — switching personas on the{" "}
           <Link href="/chat" className="text-blue-400 hover:underline">
@@ -151,6 +153,7 @@ function CorpusTable({ items }: { items: CorpusItem[] }) {
             <th className="px-4 py-2">chunks</th>
             <th className="px-4 py-2">sensitivity</th>
             <th className="px-4 py-2">authorized roles</th>
+            <th className="px-4 py-2">try</th>
           </tr>
         </thead>
         <tbody>
@@ -185,6 +188,19 @@ function CorpusTable({ items }: { items: CorpusItem[] }) {
                     ))
                   )}
                 </div>
+              </td>
+              <td className="px-4 py-3">
+                {CORPUS_HINTS[it.source_file] ? (
+                  <Link
+                    href={`/chat?q=${encodeURIComponent(CORPUS_HINTS[it.source_file])}`}
+                    title={CORPUS_HINTS[it.source_file]}
+                    className="whitespace-nowrap text-[11px] text-blue-400 hover:text-blue-300 hover:underline"
+                  >
+                    💬 ask this →
+                  </Link>
+                ) : (
+                  <span className="text-[10px] text-neutral-600">—</span>
+                )}
               </td>
             </tr>
           ))}
