@@ -17,7 +17,9 @@ https://github.com/user-attachments/assets/fd464702-9f6f-4fb0-8560-c5513d9adfc6
 
 ## What this is
 
-A multi-page SSE-streaming chat UI that:
+A multi-page front end for a **two-mode** platform — **ask** (SSE-streaming RAG
+Q&A) **or extract** (document → structured JSON) over the same governed
+ingestion. It:
 
 - Stores the visitor's LLM API key in `localStorage` and forwards it as
   an HTTP header to the backend on every chat request.
@@ -40,15 +42,16 @@ A multi-page SSE-streaming chat UI that:
 
 | Path | What it shows |
 |---|---|
-| `/` | Static landing page with architecture diagram + CTA → `/chat` |
-| `/chat` | Main BYOK chat UI (persona switcher · streaming · citations · audit) |
-| `/corpus` | Browse the 10 base demo documents — sensitivity, roles, chunk counts |
+| `/` | Static landing page (live-proof strip + CTAs → `/chat`, `/extract`) |
+| `/chat` | Main BYOK chat UI (persona switcher · streaming · citations · audit · clickable citations · WhatsApp share) |
+| `/extract` | **Extraction mode** — define a field schema (or pick an Egypt preset فاتورة / عقد إيجار), upload a doc, get validated JSON |
+| `/corpus` | Browse the 18 base demo documents (10 English RBAC + 8 Arabic) — sensitivity, roles, chunk counts, "ask this" links |
 | `/personas` | Inspect the three RBAC presets (clearance + roles + synth style) |
-| `/status` | Live health for HF Space + Qdrant Cloud + Groq, polled every 30 s |
-| `/api/chat` | Edge proxy → backend `/byok/chat` (JSON fallback) |
-| `/api/chat/stream` | Edge proxy → backend `/byok/chat/stream` (SSE passthrough) |
-| `/api/audit` | Edge proxy → backend `/byok/audit` (session-scoped JSONL export) |
-| `/api/uploads` | Edge proxy → backend `/byok/uploads` (multipart) |
+| `/status` | Live health + Ragas eval + "demo vs self-hosted" honesty table, polled every 30 s |
+| `/api/chat` · `/api/chat/stream` | Edge proxy → backend `/byok/chat` (JSON) / `/byok/chat/stream` (SSE) |
+| `/api/extract` | Edge multipart proxy → backend `/byok/extract` (doc → JSON) |
+| `/api/uploads` · `/api/audit` | Edge proxies → `/byok/uploads` (multipart) / `/byok/audit` (JSONL export) |
+| `/api/corpus` · `/api/personas` · `/api/stats` · `/api/feedback` | Edge proxies → the matching `/byok/*` metadata + stats + feedback endpoints |
 
 ## Local development
 
@@ -82,34 +85,40 @@ detour was cancelled on 2026-05-27 and removed from this repo.
 ```
 src/
   app/
-    layout.tsx           # html / body shell, dark mode, OG + analytics
-    page.tsx             # static landing page (/)
+    layout.tsx           # html / body shell, dark mode, OG + analytics + PWA manifest
+    page.tsx             # static landing (/) — live-proof strip, deploy buttons
     opengraph-image.tsx  # next/og 1200x630 social card (edge-rendered)
-    chat/page.tsx        # BYOK chat UI (/chat) — SSE, Markdown render, 📚 KB panel
-    corpus/page.tsx      # base corpus browser (/corpus, SSR)
+    chat/page.tsx        # BYOK chat UI (/chat) — SSE, Markdown, clickable citations, share
+    extract/page.tsx     # extraction mode (/extract) — schema builder + Egypt presets
+    corpus/page.tsx      # base corpus browser (/corpus, SSR) — ask-this links
     personas/page.tsx    # persona RBAC inspector (/personas, SSR)
-    status/page.tsx      # live health dashboard (/status, client-polled)
+    status/page.tsx      # live health + eval + honesty table (/status, client-polled)
     globals.css          # tailwind directives + eye-comfort palette
     api/
       chat/route.ts          # Edge proxy → /byok/chat (+ cold-start warmer)
       chat/stream/route.ts   # Edge SSE proxy → /byok/chat/stream
+      extract/route.ts       # Edge multipart proxy → /byok/extract
       audit/route.ts         # Edge proxy → /byok/audit
       uploads/route.ts       # Edge multipart proxy → /byok/uploads
       uploads/[fileId]/route.ts  # DELETE one upload
       corpus/route.ts        # Edge proxy → /byok/corpus
       personas/route.ts      # Edge proxy → /byok/personas
+      stats/route.ts         # Edge proxy → /byok/stats (live-proof strip)
+      feedback/route.ts      # Edge proxy → /byok/feedback (👍/👎)
+  components/
+    LiveStats.tsx        # landing live-proof strip (Ragas baseline + counters)
   lib/
     byok.ts              # localStorage helpers + session-id factory
-    demo-prompts.ts      # persona-tuned starter prompts
+    demo-prompts.ts      # persona-tuned prompts + Arabic prompts + corpus hints
     stream.ts            # SSE parser (no SDK dependency)
     uploads.ts           # multipart upload + JSON-safe error map
-    markdown.tsx         # zero-dep Markdown → JSX renderer ([N] citation chips)
+    markdown.tsx         # zero-dep Markdown → JSX renderer ([N] citation chips, onCite)
 public/
   favicon.svg
   robots.txt
   sitemap.xml
-  robots.txt
-  sitemap.xml
+  manifest.webmanifest   # installable PWA
+  llms.txt               # AI-crawler index
 ```
 
 ## Security model

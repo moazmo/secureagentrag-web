@@ -116,6 +116,7 @@ Examples from this repo:
 | 429 banner shows but BYOK should bypass | `src/app/chat/page.tsx` (throttle parse) → `src/app/api/chat/route.ts` (header forwarding) |
 | Upload returns "Unexpected token 'A'…" | `src/lib/uploads.ts` text-then-parse fallback — Vercel Edge cut the upstream |
 | Citations panel renders empty | Final SSE frame parser in `src/lib/stream.ts` — backend `QueryResponse` shape |
+| Extraction returns nothing / bad JSON | `src/app/extract/page.tsx` (schema + BYOK headers) → `src/app/api/extract/route.ts` (multipart proxy, `duplex: half`) → backend `/byok/extract` + `core/extraction.py` |
 | Hydration warning on first load | localStorage / IndexedDB read outside `useEffect` |
 | Vercel build error "edge runtime cannot import" | A client component imported a Node-only module — split it |
 
