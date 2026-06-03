@@ -62,6 +62,12 @@ export default function LandingPage() {
           >
             🚀 Try the demo corpus
           </Link>
+          <Link
+            href="/extract"
+            className="rounded border border-[color:var(--border-soft)] px-4 py-2 text-sm text-neutral-200 hover:border-neutral-500"
+          >
+            📑 Extract to JSON
+          </Link>
           <a
             href="https://github.com/moazmo/secureagentrag"
             target="_blank"
