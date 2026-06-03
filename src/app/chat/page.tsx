@@ -1524,30 +1524,44 @@ function FollowUpStrip({
 
 function ShareButton({ query, persona }: { query: string; persona?: Persona }) {
   const [copied, setCopied] = useState(false);
+  function shareUrl(): string {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const params = new URLSearchParams({ q: query });
+    if (persona) params.set("persona", persona);
+    return `${origin}/chat?${params.toString()}`;
+  }
   function onShare() {
     try {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
-      const params = new URLSearchParams({ q: query });
-      if (persona) params.set("persona", persona);
-      void navigator.clipboard
-        .writeText(`${origin}/chat?${params.toString()}`)
-        .then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        });
+      void navigator.clipboard.writeText(shareUrl()).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
     } catch {
       /* clipboard unavailable (insecure context) */
     }
   }
+  // E4 — WhatsApp is the dominant channel in Egypt; one-tap forward of the
+  // deep link spreads good answers off a phone screen.
+  const waHref = `https://wa.me/?text=${encodeURIComponent(`${query}\n${shareUrl()}`)}`;
   return (
-    <button
-      onClick={onShare}
-      title="Copy a link that reruns this exact question + persona for anyone you send it to"
-      className="cursor-pointer rounded bg-neutral-800 px-1.5 py-0.5 text-neutral-300 hover:bg-neutral-700"
-    >
-      {copied ? "✓ link copied" : "🔗 share"}
-    </button>
+    <span className="flex gap-1">
+      <button
+        onClick={onShare}
+        title="Copy a link that reruns this exact question + persona for anyone you send it to"
+        className="cursor-pointer rounded bg-neutral-800 px-1.5 py-0.5 text-neutral-300 hover:bg-neutral-700"
+      >
+        {copied ? "✓ link copied" : "🔗 share"}
+      </button>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Share this answer's link on WhatsApp"
+        className="cursor-pointer rounded bg-emerald-900/40 px-1.5 py-0.5 text-emerald-300 hover:bg-emerald-900/60"
+      >
+        wa
+      </a>
+    </span>
   );
 }
 

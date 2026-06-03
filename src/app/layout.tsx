@@ -1,9 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
+// PWA installability (E5/O6): theme + viewport. In Next 16 themeColor lives on
+// the viewport export, not on metadata.
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
+  manifest: "/manifest.webmanifest",
   title: "SecureAgentRAG — Privacy-first multi-agent RAG demo",
   description:
     "Public BYOK demo of SecureAgentRAG — privacy-first multi-agent RAG with RBAC at the Qdrant vector-DB layer, sensitivity-based inference routing, NLI citation-faithfulness gate, and a SHA-256 hash-chained audit log. Free to try, no credit card, no signup.",
